@@ -1,5 +1,5 @@
-`from flask import Flask, request, jsonify, Response
-from flask_restful import Api, Resource, reqparse
+from flask import Flask, request, jsonify, Response
+from flask_restful import Api, Resource
 
 app = Flask(__name__)
 
@@ -9,12 +9,12 @@ class EmailVerify(Resource):  # 邮箱绑定请求验证码
         return {"state": "fail"}
 
     def post(self):
-        # 如果邮箱没被占用：
-        email = 解析表单得到参数()
         try:
-            res = generate_email_code(email)
-            if res["state"] == "success":  # 此时生成邮箱验证码+时间戳
-                code = res(email)["email_code"]
+            data = request.get_json()
+            email = data['email']
+            res = generate_email_code(email)  # 此时生成邮箱验证码+时间戳
+            if res["state"] == "success":
+                code = res["email_code"]
                 send_email(email, code)
                 return {"state": "success"}
             else:
@@ -29,12 +29,13 @@ class Register(Resource):  # 注册请求
         return {"state": "fail"}
 
     def post(self):
-        password = 解析表单得到参数()
+        data = request.get_json()
+        password = data['password']
         password = encode(password)
-        email = 解析表单得到参数()
-        username = 解析表单得到参数()
-        avatar = 解析表单得到参数()
-        email_code = 解析表单得到参数()
+        email = data['email']
+        username = data['username']
+        avatar = data['avatar']
+        email_code = data['email_code']
         return create_user(password, email, username, avatar, email_code)
 
 
@@ -43,9 +44,10 @@ class Login(Resource):  # 登录请求
         return {"state": "fail"}
 
     def post(self):
-        password = 解析表单得到参数()
+        data = request.get_json()
+        password = data['password']
         password = encode(password)
-        email = 解析表单得到参数()
+        email = data['email']
         try:
             return compare_password(password, email)
         except:
@@ -82,6 +84,34 @@ class GetDetail(Resource):  # 登录请求
             return {"state": "fail"}
 
 
+class Collection(Resource):  # 收藏取消资源
+    def get(self):  #
+        try:
+            data = request.get_json()
+            user_id = data['user_id']
+            paper_id = data['paper_id']
+            return collect(user_id,paper_id)
+        except:
+            return {"state":"fail"}
+    def delete(self):
+        try:
+            data = request.get_json()
+            user_id = data['user_id']
+            paper_id = data['paper_id']
+            return delete_collect(user_id,paper_id)
+        except:
+            return {"state":"fail"}
+    def post(self):
+        try:
+            data = request.get_json()
+            user_id = data['user_id']
+            paper_id = data['paper_id']
+            return is_collect(user_id,paper_id)
+        except:
+            return {"state":"fail"}
+
+
+
 # 添加api资源
 api = Api(app)
 api.add_resource(EmailVerify, "/api/v1/email_code", endpoint="email_code")
@@ -93,6 +123,10 @@ api.add_resource(Search, "/api/v1/search_organization/<string:organization_name>
 api.add_resource(GetDetail, "/api/v1/professor_detail/<string:professor_id>", endpoint="professor_detail")
 api.add_resource(GetDetail, "/api/v1/user_detail/<string:user_id>", endpoint="user_detail")
 api.add_resource(GetDetail, "/api/v1/organization_detail/<string:organization_id>", endpoint="organization_detail")
+api.add_resource(Collection,"/api/v1/collect",endpoint = "collect")
+api.add_resource(Collection,"/api/v1/is_collect",endpoint = "is_collect")
+
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
