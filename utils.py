@@ -19,7 +19,7 @@ SPECIAL_STR = "cxk"                     # MD5加密特殊字符串
 MD5_LEN = 10                            # 加密组合长度
 
 
-def send_mail(receiver, email_code):
+def send_email(receiver, email_code):
     title = "斑马科技资源共享平台"
     content = "【斑马科技】欢迎使用斑马科技资源共享平台，您的验证码为" + email_code + \
               "，请在五分钟内完成验证，如非本人操作，请忽略此邮件。"
