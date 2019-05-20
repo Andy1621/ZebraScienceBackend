@@ -1,7 +1,9 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request
 from flask_restful import Api, Resource
-from utils import send_mail,encode
+from utils import send_email, encode
+from DBClass import DbOperate
 app = Flask(__name__)
+db = DbOperate()
 
 
 class EmailVerify(Resource):  # 邮箱绑定请求验证码
@@ -9,7 +11,7 @@ class EmailVerify(Resource):  # 邮箱绑定请求验证码
         try:
             data = request.get_json()
             email = data['email']
-            res = generate_email_code(email)  # 此时生成邮箱验证码+时间戳
+            res = db.generate_email_code(email)  # 此时生成邮箱验证码+时间戳
             if res["state"] == "success":
                 code = res["email_code"]
                 send_email(email, code)
@@ -30,7 +32,7 @@ class Register(Resource):  # 注册请求
         username = data['username']
         avatar = data['avatar']
         email_code = data['email_code']
-        return create_user(password, email, username, avatar, email_code)
+        return db.create_user(password, email, username, avatar, email_code)
 
 
 class Login(Resource):  # 登录请求
@@ -40,7 +42,7 @@ class Login(Resource):  # 登录请求
         password = encode(password)
         email = data['email']
         try:
-            return compare_password(password, email)
+            return db.compare_password(password, email)
         except:
             return {"state": "fail"}
 
@@ -49,11 +51,11 @@ class Search(Resource):  # 登录请求
     def get(self, professor_name=None, title=None, organization_name=None):
         try:
             if professor_name:  # 通过专家名检索
-                return search_professor(professor_name)
+                return db.search_professor(professor_name)
             elif title:  # 通过文章名检索
-                return search_paper(title)
+                return db.search_paper(title)
             elif organization_name:  # 通过机构名检索
-                return search_organization(organization_name)
+                return db.search_organization(organization_name)
             else:  # 非法搜索
                 return {"state": "fail"}
         except:
@@ -64,11 +66,11 @@ class GetDetail(Resource):  # 登录请求
     def get(self, professor_id=None, organization_id=None, user_id=None):
         try:
             if professor_id:  # 获取专家信息
-                return get_professor_details(professor_id)
+                return db.get_professor_details(professor_id)
             elif organization_id:  # 获取组织信息
-                return get_organization_details(organization_id)
+                return db.get_organization_details(organization_id)
             elif user_id:  # 获取普通用户信息
-                return get_user_details(user_id)
+                return db.get_user_details(user_id)
             else:  # 非法搜索
                 return {"state": "fail"}
         except:
@@ -81,7 +83,7 @@ class Collection(Resource):  # 论文资源
             data = request.args
             user_id = data['user_id']
             paper_id = data['paper_id']
-            return collect(user_id, paper_id)
+            return db.collect(user_id, paper_id)
         except:
             return {"state": "fail"}
 
@@ -90,7 +92,7 @@ class Collection(Resource):  # 论文资源
             data = request.args
             user_id = data['user_id']
             paper_id = data['paper_id']
-            return delete_collect(user_id, paper_id)
+            return db.delete_collect(user_id, paper_id)
         except:
             return {"state": "fail"}
 
@@ -99,7 +101,7 @@ class Collection(Resource):  # 论文资源
             data = request.get_json()
             user_id = data['user_id']
             paper_id = data['paper_id']
-            return is_collect(user_id, paper_id)
+            return db.is_collect(user_id, paper_id)
         except:
             return {"state": "fail"}
 
@@ -110,7 +112,7 @@ class Follow(Resource):  # 关注
             data = request.args
             user_id = data['user_id']
             professor_id = data['professor_id']
-            return follow(user_id, professor_id)
+            return db.follow(user_id, professor_id)
         except:
             return {"state": "fail"}
 
@@ -119,7 +121,7 @@ class Follow(Resource):  # 关注
             data = request.args
             user_id = data['user_id']
             professor_id = data['professor_id']
-            return un_follow(user_id, professor_id)
+            return db.un_follow(user_id, professor_id)
         except:
             return {"state": "fail"}
 
@@ -128,7 +130,7 @@ class Follow(Resource):  # 关注
             data = request.get_json()
             user_id = data['user_id']
             professor_id = data['professor_id']
-            return is_follow(user_id, professor_id)
+            return db.is_follow(user_id, professor_id)
         except:
             return {"state": "fail"}
 
@@ -144,7 +146,7 @@ class ChangeInfo(Resource):  # 修改用户名
                 username = data['username']
             if data['avatar']:
                 avatar = data['avatar']
-            return change_info(user_id, username, avatar)
+            return db.change_info(user_id, username, avatar)
         except:
             return {"state": "fail"}
 
@@ -156,7 +158,7 @@ class ChangePwd(Resource):  # 修改密码
             user_id = data['user_id']
             old_password = data['old_password']
             new_password = data['new_password']
-            return change_pwd(user_id, old_password, new_password)
+            return db.change_pwd(user_id, old_password, new_password)
         except:
             return {"state": "fail"}
 
@@ -167,7 +169,7 @@ class ChangeResource(Resource):  # 增加删除资源
             data = request.get_json()
             professor_id = data['professor_id']
             paper_url = data['paper_url']
-            return add_resource(professor_id, paper_url)
+            return db.add_resource(professor_id, paper_url)
         except:
             return {"state": "fail"}
 
@@ -176,7 +178,7 @@ class ChangeResource(Resource):  # 增加删除资源
             data = request.args
             professor_id = data['professor_id']
             paper_id = data['paper_id']
-            return rm_resource(professor_id, paper_id)
+            return db.rm_resource(professor_id, paper_id)
         except:
             return {"state": "fail"}
 
@@ -187,7 +189,7 @@ class DealRequest(Resource):  # 管理员处理申请
             data = request.get_json()
             apply_id = data['apply_id']
             deal = data['deal']
-            return deal_request(apply_id, deal)
+            return db.deal_request(apply_id, deal)
         except:
             return {"state": "fail"}
 
@@ -200,13 +202,13 @@ class Comment(Resource):  # 评论资源
             paperid = data['paperid']
             toid = data['toid']
             content = data['content']
-            if(comment(id,paperid,content)['state'] == 'success'):
-                return sendmessage(id, toid, COMMENT, '您发布的资源:'+paperid+'收到来自用户：'+id+'的评论')
+            if(db.comment(id,paperid,content)['state'] == 'success'):
+                return db.sendmessage(id, toid, COMMENT, '您发布的资源:'+paperid+'收到来自用户：'+id+'的评论')
         except:
             return {"state": "fail"}
 
 
-class Reply_Comment(Resource):  # 回复评论
+class ReplyComment(Resource):  # 回复评论
     def get(self):
         try:
             data = request.args
@@ -214,41 +216,41 @@ class Reply_Comment(Resource):  # 回复评论
             toid = data['toid']
             replyid = data['replyid']
             content = data['content']
-            if (replycomment(id,replyid,content)['state'] == 'success'):
-                return sendmessage(id, toid, REPLY, '您发布的评论:' + replyid + '收到来自用户：' + id + '的回复')
+            if (db.replycomment(id,replyid,content)['state'] == 'success'):
+                return db.sendmessage(id, toid, REPLY, '您发布的评论:' + replyid + '收到来自用户：' + id + '的回复')
 
         except:
             return {"state": "fail"}
 
 
-class Delete_Comment(Resource):  # 删除评论
+class DeleteComment(Resource):  # 删除评论
     def get(self):
         try:
             data = request.args
             toid = data['toid']
             comment_id = data['comment_id']
-            if (deletecomment(comment_id)['state'] == 'success'):
-                return send_sys_sendmessage_toone(toid,DELETECOMMENT,'您的评论：'+comment_id+'已被删除')
+            if (db.deletecomment(comment_id)['state'] == 'success'):
+                return db.send_sys_sendmessage_toone(toid,DELETECOMMENT,'您的评论：'+comment_id+'已被删除')
         except:
             return {"state": "fail"}
 
 
-class Send_Sysmessage(Resource):  # 发送通知
+class SendSysmessage(Resource):  # 发送通知
     def get(self):
         try:
             data = request.args
             content = data['content']
-            return send_sys_message_toall(content)
+            return db.send_sys_message_toall(content)
         except:
             return {"state": "fail"}
 
 
-class Get_Sysmessage(Resource):  # 获取通知
+class GetSysmessage(Resource):  # 获取通知
     def get(self):
         try:
             data = request.args
             id = data['id']
-            return getsysmessage(id)
+            return db.getsysmessage(id)
         except:
             return {"state": "fail"}
 
@@ -262,30 +264,30 @@ class Certification(Resource):  # 申请认证
             ID_num = data['ID_num']
             text = data['text']
             field = data['field']
-            if(certification(id,name,ID_num,field,text)['state'] == 'success'):
-                return send_sys_sendmessage_toadmin(APPLY, '收到来自：' + id + '的认证申请，请及时处理')
+            if(db.certification(id,name,ID_num,field,text)['state'] == 'success'):
+                return db.send_sys_sendmessage_toadmin(APPLY, '收到来自：' + id + '的认证申请，请及时处理')
         except:
             return {"state":"fail"}
 
 
-class Common_Name(Resource):  # 同名专家申请认证
+class CommonName(Resource):  # 同名专家申请认证
     def get(self):
         try:
             data = request.args
             professor_name = data['professor_name']
-            return commonname(professor_name)
+            return db.commonname(professor_name)
         except:
             return {"state":"fail"}
 
 
-class Deal_Certification(Resource):  # 管理员处理认证
+class DealCertification(Resource):  # 管理员处理认证
     def get(self):
         try:
             data = request.args
             deal = data['deal']
             apply_id = data['apply_id']
-            if(deal_certification(apply_id, deal)['state'] == 'success'):
-                return send_sys_sendmessage_toone(apply_id,APPLYRESULT,'您申请认证的结果是：'+deal)
+            if(db.deal_certification(apply_id, deal)['state'] == 'success'):
+                return db.send_sys_sendmessage_toone(apply_id,APPLYRESULT,'您申请认证的结果是：'+deal)
         except:
             return {"state":"fail"}
 
@@ -313,12 +315,12 @@ api.add_resource(DealRequest, "/api/v1/deal_request", endpoint="deal_request")
 api.add_resource(Comment, "/api/v1/comment", endpoint="comment")
 api.add_resource(ReplyComment, "/api/v1/reply_comment", endpoint="reply_comment")
 api.add_resource(DeleteComment, "/api/v1/delete_comment", endpoint="delete_comment")
-api.add_resource(SendSysMessage, "/api/v1/send_sys_message", endpoint="send_sys_message")
-api.add_resource(GetSysMessage, "/api/v1/get_sys_message", endpoint="get_sys_message")
+api.add_resource(SendSysmessage, "/api/v1/send_sys_message", endpoint="send_sys_message")
+api.add_resource(GetSysmessage, "/api/v1/get_sys_message", endpoint="get_sys_message")
 api.add_resource(Certification, "/api/v1/certification", endpoint="certification")
 api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
 api.add_resource(DealCertification, "/api/v1/deal_certification", endpoint="deal_certification")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="127.0.0.1", debug=True)
     # app.response_class = AResponse
