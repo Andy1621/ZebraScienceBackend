@@ -75,7 +75,7 @@ class DbOperate:
     '''
     2. 注册用户 √
     '''
-    def create_user(self, password, email, username, avatar, email_code):
+    def create_user(self, password, email, username, email_code):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             has_user = self.getCol('user').find({'email': email}).count()
@@ -88,7 +88,6 @@ class DbOperate:
                 newuser = { 'username': username,
                             'email': email,
                             'password': password,
-                            'avatar': avatar,
                             'user_type': 'USER',
                             'star_list': [],
                             'follow_list': []

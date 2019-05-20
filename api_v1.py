@@ -35,9 +35,8 @@ class Register(Resource):  # 注册请求
         password = encode(password)
         email = data.get('email')
         username = data.get('username')
-        avatar = data.get('avatar')
         email_code = data.get('email_code')
-        res = db.create_user(password, email, username, avatar, email_code)
+        res = db.create_user(password, email, username, email_code)
         return dumps(res, ensure_ascii=False)
 
 
