@@ -28,6 +28,7 @@ class EmailVerify(Resource):  # 邮箱绑定请求验证码
             res = {"state": "fail"}
             return dumps(res, ensure_ascii=False)
 
+
 class Register(Resource):  # 注册请求
     def post(self):
         data = request.get_json()
@@ -230,13 +231,15 @@ class Comment(Resource):  # 评论资源
         res = {"state": "fail"}
         try:
             data = request.args
-            id = data.get('id')
+            from_id = data.get('from_id')
             paper_id = data.get('paper_id')
             to_id = data.get('to_id')
             content = data.get('content')
-            res = db.comment(id, paper_id, content)
+            paper_name = data.get('paper_name')
+            from_name = data.get('from_name')
+            res = db.comment(from_id, paper_id, content)
             if res['state'] == 'success':
-                res = db.send_message(id, to_id, 'COMMENT', '您的资源:' + paper_id + '收到来自用户：' + id + '的评论')
+                res = db.send_sys_message_to_one(to_id, 'COMMENT', '您的资源:《' + paper_name + '》收到来自用户：' + from_name + '的评论')
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -247,13 +250,15 @@ class ReplyComment(Resource):  # 回复评论
         res = {"state": "fail"}
         try:
             data = request.args
-            id = data.get('id')
+            from_id = data.get('from_id')
             to_id = data.get('to_id')
             reply_id = data.get('reply_id')
             content = data.get('content')
-            res = db.replycomment(id, reply_id, content)
+            comment = data.get('comment')
+            from_name = data.get('from_name')
+            res = db.replycomment(from_id, reply_id, content)
             if res['state'] == 'success':
-                res = db.send_sys_sendmessage_to_one(to_id, 'REPLY', '您发布的评论:' + reply_id + '收到来自用户：' + id + '的回复')
+                res = db.send_sys_message_to_one(to_id, 'REPLY', '您发布的评论: "' + comment + '"收到来自用户：' + from_name + '的回复')
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -266,21 +271,22 @@ class DeleteComment(Resource):  # 删除评论
             data = request.args
             to_id = data.get('to_id')
             comment_id = data.get('comment_id')
-            res = db.deletecomment(comment_id)
+            comment = data.get('comment')
+            res = db.delete_comment(comment_id)
             if res['state'] == 'success':
-                res = db.send_sys_sendmessage_to_one(to_id, 'DELETECOMMENT', '您的评论：' + comment_id + '已被删除')
+                res = db.send_sys_message_to_one(to_id, 'DELETECOMMENT', '您的评论："' + comment + '"已被删除')
                 return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
 
-class SendSysmessage(Resource):  # 发送通知
+class SendSysMessage(Resource):  # 发送通知
     def get(self):
         res = {"state": "fail"}
         try:
             data = request.args
             content = data.get('content')
-            res = db.send_sys_message_to_all(content)
+            res = db.send_sys_message_to_all('SYSTEM', content)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -291,8 +297,8 @@ class GetSysmessage(Resource):  # 获取通知
         res = {"state": "fail"}
         try:
             data = request.args
-            id = data.get('id')
-            res = db.get_sys_message(id)
+            user_id = data.get('user_id')
+            res = db.get_sys_message(user_id)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -303,14 +309,14 @@ class Certification(Resource):  # 申请认证
         res = {"state": "fail"}
         try:
             data = request.args
-            id = data.get('id')
+            user_id = data.get('user_id')
             name = data.get('name')
             ID_num = data.get('ID_num')
             text = data.get('text')
             field = data.get('field')
-            res = db.certification(id, name, ID_num, field, text)
+            res = db.certification(user_id, name, ID_num, field, text)
             if res['state'] == 'success':
-                res = db.send_sys_sendmessage_to_admin('APPLY', '收到来自：' + id + '的认证申请，请及时处理')
+                res = db.send_sys_sendmessage_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理')
                 return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -337,7 +343,10 @@ class DealCertification(Resource):  # 管理员处理认证
             apply_id = data.get('apply_id')
             res = db.deal_certification(apply_id, deal)
             if res['state'] == 'success':
-                res = db.send_sys_sendmessage_to_one(apply_id, 'APPLYRESULT', '您申请认证的结果是：'+deal)
+                content = res['name'] + ",恭喜您申请认证成功"
+                if deal == "no":
+                    content = res['name'] + "很抱歉您申请失败"
+                res = db.send_sys_sendmessage_to_one(res['user_id'], 'APPLYRESULT', content)
                 return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -366,7 +375,7 @@ api.add_resource(DealRequest, "/api/v1/deal_request", endpoint="deal_request")
 api.add_resource(Comment, "/api/v1/comment", endpoint="comment")
 api.add_resource(ReplyComment, "/api/v1/reply_comment", endpoint="reply_comment")
 api.add_resource(DeleteComment, "/api/v1/delete_comment", endpoint="delete_comment")
-api.add_resource(SendSysmessage, "/api/v1/send_sys_message", endpoint="send_sys_message")
+api.add_resource(SendSysMessage, "/api/v1/send_sys_message", endpoint="send_sys_message")
 api.add_resource(GetSysmessage, "/api/v1/get_sys_message", endpoint="get_sys_message")
 api.add_resource(Certification, "/api/v1/certification", endpoint="certification")
 api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
