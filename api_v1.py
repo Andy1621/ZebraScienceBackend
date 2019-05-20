@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify, Response
 from flask_restful import Api, Resource
-from utils import send_mail,encode
+from utils import send_mail, encode
+from flask_cors import *
+
 app = Flask(__name__)
+CORS(app, resources=r'/*')
 
 
 class EmailVerify(Resource):  # 邮箱绑定请求验证码
