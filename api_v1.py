@@ -3,6 +3,7 @@ from flask_restful import Api, Resource
 from utils import send_email, encode
 from DBClass import DbOperate
 from flask_cors import *
+from json import dumps
 
 app = Flask(__name__)
 CORS(app, resources=r'/*')
@@ -13,286 +14,334 @@ class EmailVerify(Resource):  # 邮箱绑定请求验证码
     def post(self):
         try:
             data = request.get_json()
-            email = data['email']
-            res = db.generate_email_code(email)  # 此时生成邮箱验证码+时间戳
-            if res["state"] == "success":
-                code = res["email_code"]
+            email = data.get('email')
+            t_res = db.generate_email_code(email)  # 此时生成邮箱验证码+时间戳x
+            if t_res.get("state") == "success":
+                code = t_res.get("email_code")
                 send_email(email, code)
-                return {"state": "success"}
+                res = {"state": "success"}
             else:
                 # 被占用则返回fail
-                return {"state": "fail"}
+                res = t_res
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
-
+            res = {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 class Register(Resource):  # 注册请求
     def post(self):
         data = request.get_json()
-        password = data['password']
+        password = data.get('password')
         password = encode(password)
-        email = data['email']
-        username = data['username']
-        avatar = data['avatar']
-        email_code = data['email_code']
-        return db.create_user(password, email, username, avatar, email_code)
+        email = data.get('email')
+        username = data.get('username')
+        avatar = data.get('avatar')
+        email_code = data.get('email_code')
+        res = db.create_user(password, email, username, avatar, email_code)
+        return dumps(res, ensure_ascii=False)
 
 
 class Login(Resource):  # 登录请求
     def post(self):
         data = request.get_json()
-        password = data['password']
+        password = data.get('password')
         password = encode(password)
-        email = data['email']
+        email = data.get('email')
+        res = {"state": "fail"}
         try:
-            return db.compare_password(password, email)
+            res = db.compare_password(password, email)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class Search(Resource):  # 登录请求
     def get(self, professor_name=None, title=None, organization_name=None):
+        res = {"state": "fail"}
         try:
             if professor_name:  # 通过专家名检索
-                return db.search_professor(professor_name)
+                res = db.search_professor(professor_name)
             elif title:  # 通过文章名检索
-                return db.search_paper(title)
+                res = db.search_paper(title)
             elif organization_name:  # 通过机构名检索
-                return db.search_organization(organization_name)
-            else:  # 非法搜索
-                return {"state": "fail"}
+                res = db.search_organization(organization_name)
+            # 非法搜索
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class GetDetail(Resource):  # 登录请求
     def get(self, professor_id=None, organization_id=None, user_id=None):
+        res = {"state": "fail"}
         try:
             if professor_id:  # 获取专家信息
-                return db.get_professor_details(professor_id)
+                res = db.get_professor_details(professor_id)
             elif organization_id:  # 获取组织信息
-                return db.get_organization_details(organization_id)
+                res = db.get_organization_details(organization_id)
             elif user_id:  # 获取普通用户信息
-                return db.get_user_details(user_id)
-            else:  # 非法搜索
-                return {"state": "fail"}
+                res = db.get_user_details(user_id)
+            # 非法搜索
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class Collection(Resource):  # 论文资源
     def get(self):  # 收藏资源
+        res = {"state": "fail"}
         try:
             data = request.args
-            user_id = data['user_id']
-            paper_id = data['paper_id']
-            return db.collect(user_id, paper_id)
+            user_id = data.get('user_id')
+            paper_id = data.get('paper_id')
+            res = db.collect(user_id, paper_id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
     def delete(self):  # 删除收藏
+        res = {"state": "fail"}
         try:
             data = request.args
-            user_id = data['user_id']
-            paper_id = data['paper_id']
-            return db.delete_collect(user_id, paper_id)
+            user_id = data.get('user_id')
+            paper_id = data.get('paper_id')
+            res = db.collect(user_id, paper_id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
     def post(self):  # 是否收藏
+        res = {"state": "fail"}
         try:
             data = request.get_json()
-            user_id = data['user_id']
-            paper_id = data['paper_id']
-            return db.is_collect(user_id, paper_id)
+            user_id = data.get('user_id')
+            paper_id = data.get('paper_id')
+            res = db.is_collect(user_id, paper_id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class Follow(Resource):  # 关注
     def get(self):  # 关注
+        res = {"state": "fail"}
         try:
             data = request.args
-            user_id = data['user_id']
-            professor_id = data['professor_id']
-            return db.follow(user_id, professor_id)
+            user_id = data.get('user_id')
+            professor_id = data.get('professor_id')
+            res = db.follow(user_id, professor_id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
     def delete(self):  # 取消关注
+        res = {"state": "fail"}
         try:
             data = request.args
-            user_id = data['user_id']
-            professor_id = data['professor_id']
-            return db.un_follow(user_id, professor_id)
+            user_id = data.get('user_id')
+            professor_id = data.get('professor_id')
+            res = db.follow(user_id, professor_id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
     def post(self):  # 是否关注
+        res = {"state": "fail"}
         try:
             data = request.get_json()
-            user_id = data['user_id']
-            professor_id = data['professor_id']
-            return db.is_follow(user_id, professor_id)
+            user_id = data.get('user_id')
+            professor_id = data.get('professor_id')
+            res = db.is_follow(user_id, professor_id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class ChangeInfo(Resource):  # 修改用户名
     def post(self):
+        res = {"state": "fail"}
         try:
             data = request.get_json()
-            user_id = data['user_id']
+            user_id = data.get('user_id')
             username = None
             avatar = None
-            if data['username']:
-                username = data['username']
-            if data['avatar']:
-                avatar = data['avatar']
-            return db.change_info(user_id, username, avatar)
+            if data.get('username'):
+                username = data.get('username')
+            if data.get('avatar'):
+                avatar = data.get('avatar')
+            res = db.change_info(user_id, username, avatar)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class ChangePwd(Resource):  # 修改密码
     def post(self):
+        res = {"state": "fail"}
         try:
             data = request.get_json()
-            user_id = data['user_id']
-            old_password = data['old_password']
-            new_password = data['new_password']
-            return db.change_pwd(user_id, old_password, new_password)
+            user_id = data.get('user_id')
+            old_password = data.get('old_password')
+            new_password = data.get('new_password')
+            res = db.change_pwd(user_id, old_password, new_password)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class ChangeResource(Resource):  # 增加删除资源
     def post(self):
+        res = {"state": "fail"}
         try:
             data = request.get_json()
-            professor_id = data['professor_id']
-            paper_url = data['paper_url']
-            return db.add_resource(professor_id, paper_url)
+            professor_id = data.get('professor_id')
+            paper_url = data.get('paper_url')
+            res = db.add_resource(professor_id, paper_url)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
     def delete(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            professor_id = data['professor_id']
-            paper_id = data['paper_id']
-            return db.rm_resource(professor_id, paper_id)
+            professor_id = data.get('professor_id')
+            paper_id = data.get('paper_id')
+            res = db.rm_resource(professor_id, paper_id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class DealRequest(Resource):  # 管理员处理申请
     def post(self):
+        res = {"state": "fail"}
         try:
             data = request.get_json()
-            apply_id = data['apply_id']
-            deal = data['deal']
-            return db.deal_request(apply_id, deal)
+            apply_id = data.get('apply_id')
+            deal = data.get('deal')
+            res = db.deal_request(apply_id, deal)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class Comment(Resource):  # 评论资源
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            id = data['id']
-            paperid = data['paperid']
-            toid = data['toid']
-            content = data['content']
-            if(db.comment(id,paperid,content)['state'] == 'success'):
-                return db.sendmessage(id, toid, COMMENT, '您发布的资源:'+paperid+'收到来自用户：'+id+'的评论')
+            id = data.get('id')
+            paper_id = data.get('paper_id')
+            to_id = data.get('to_id')
+            content = data.get('content')
+            res = db.comment(id, paper_id, content)
+            if res['state'] == 'success':
+                res = db.send_message(id, to_id, 'COMMENT', '您的资源:' + paper_id + '收到来自用户：' + id + '的评论')
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class ReplyComment(Resource):  # 回复评论
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            id = data['id']
-            toid = data['toid']
-            replyid = data['replyid']
-            content = data['content']
-            if (db.replycomment(id,replyid,content)['state'] == 'success'):
-                return db.sendmessage(id, toid, REPLY, '您发布的评论:' + replyid + '收到来自用户：' + id + '的回复')
-
+            id = data.get('id')
+            to_id = data.get('to_id')
+            reply_id = data.get('reply_id')
+            content = data.get('content')
+            res = db.replycomment(id, reply_id, content)
+            if res['state'] == 'success':
+                res = db.send_sys_sendmessage_to_one(to_id, 'REPLY', '您发布的评论:' + reply_id + '收到来自用户：' + id + '的回复')
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class DeleteComment(Resource):  # 删除评论
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            toid = data['toid']
-            comment_id = data['comment_id']
-            if (db.deletecomment(comment_id)['state'] == 'success'):
-                return db.send_sys_sendmessage_toone(toid,DELETECOMMENT,'您的评论：'+comment_id+'已被删除')
+            to_id = data.get('to_id')
+            comment_id = data.get('comment_id')
+            res = db.deletecomment(comment_id)
+            if res['state'] == 'success':
+                res = db.send_sys_sendmessage_to_one(to_id, 'DELETECOMMENT', '您的评论：' + comment_id + '已被删除')
+                return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class SendSysmessage(Resource):  # 发送通知
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            content = data['content']
-            return db.send_sys_message_toall(content)
+            content = data.get('content')
+            res = db.send_sys_message_to_all(content)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class GetSysmessage(Resource):  # 获取通知
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            id = data['id']
-            return db.getsysmessage(id)
+            id = data.get('id')
+            res = db.get_sys_message(id)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state": "fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class Certification(Resource):  # 申请认证
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            id = data['id']
-            name = data['name']
-            ID_num = data['ID_num']
-            text = data['text']
-            field = data['field']
-            if(db.certification(id,name,ID_num,field,text)['state'] == 'success'):
-                return db.send_sys_sendmessage_toadmin(APPLY, '收到来自：' + id + '的认证申请，请及时处理')
+            id = data.get('id')
+            name = data.get('name')
+            ID_num = data.get('ID_num')
+            text = data.get('text')
+            field = data.get('field')
+            res = db.certification(id, name, ID_num, field, text)
+            if res['state'] == 'success':
+                res = db.send_sys_sendmessage_to_admin('APPLY', '收到来自：' + id + '的认证申请，请及时处理')
+                return dumps(res, ensure_ascii=False)
         except:
-            return {"state":"fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class CommonName(Resource):  # 同名专家申请认证
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            professor_name = data['professor_name']
-            return db.commonname(professor_name)
+            professor_name = data.get('professor_name')
+            res = db.commonname(professor_name)
+            return dumps(res, ensure_ascii=False)
         except:
-            return {"state":"fail"}
+            return dumps(res, ensure_ascii=False)
 
 
 class DealCertification(Resource):  # 管理员处理认证
     def get(self):
+        res = {"state": "fail"}
         try:
             data = request.args
-            deal = data['deal']
-            apply_id = data['apply_id']
-            if(db.deal_certification(apply_id, deal)['state'] == 'success'):
-                return db.send_sys_sendmessage_toone(apply_id,APPLYRESULT,'您申请认证的结果是：'+deal)
+            deal = data.get('deal')
+            apply_id = data.get('apply_id')
+            res = db.deal_certification(apply_id, deal)
+            if res['state'] == 'success':
+                res = db.send_sys_sendmessage_to_one(apply_id, 'APPLYRESULT', '您申请认证的结果是：'+deal)
+                return dumps(res, ensure_ascii=False)
         except:
-            return {"state":"fail"}
+            return dumps(res, ensure_ascii=False)
 
         
 # 添加api资源
