@@ -78,7 +78,7 @@ class GetDetail(Resource):  # 登录请求
 class Collection(Resource):  # 论文资源
     def get(self):  # 收藏资源
         try:
-            data = request.get_json()
+            data = request.args
             user_id = data['user_id']
             paper_id = data['paper_id']
             return collect(user_id, paper_id)
@@ -87,7 +87,7 @@ class Collection(Resource):  # 论文资源
 
     def delete(self):  # 删除收藏
         try:
-            data = request.get_json()
+            data = request.args
             user_id = data['user_id']
             paper_id = data['paper_id']
             return delete_collect(user_id, paper_id)
@@ -107,7 +107,7 @@ class Collection(Resource):  # 论文资源
 class Follow(Resource):  # 关注
     def get(self):  # 关注
         try:
-            data = request.get_json()
+            data = request.args
             user_id = data['user_id']
             professor_id = data['professor_id']
             return follow(user_id, professor_id)
@@ -116,7 +116,7 @@ class Follow(Resource):  # 关注
 
     def delete(self):  # 取消关注
         try:
-            data = request.get_json()
+            data = request.args
             user_id = data['user_id']
             professor_id = data['professor_id']
             return un_follow(user_id, professor_id)
@@ -173,7 +173,7 @@ class ChangeResource(Resource):  # 增加删除资源
 
     def delete(self):
         try:
-            data = request.get_json()
+            data = request.args
             professor_id = data['professor_id']
             paper_id = data['paper_id']
             return rm_resource(professor_id, paper_id)
@@ -193,92 +193,101 @@ class DealRequest(Resource):  # 管理员处理申请
 
 
 class Comment(Resource):  # 评论资源
-    def post(self):
-        try:
-            data = request.get_json()
-            user_id = data['user_id']
-            paper_id = data['paper_id']
-            content = data['content']
-            return comment(user_id, paper_id, content)
-        except:
-            return {"state": "fail"}
-
-
-class ReplyComment(Resource):  # 回复评论
-    def post(self):
-        try:
-            data = request.get_json()
-            user_id = data['user_id']
-            reply_id = data['reply_id']
-            content = data['content']
-            return reply_comment(user_id, reply_id, content)
-        except:
-            return {"state": "fail"}
-
-
-class DeleteComment(Resource):  # 删除评论
-    def delete(self):
-        try:
-            data = request.get_json()
-            comment_id = data['comment_id']
-            return delete_comment(comment_id)
-        except:
-            return {"state": "fail"}
-
-
-class SendSysMessage(Resource):  # 发送通知
-    def post(self):
-        try:
-            data = request.get_json()
-            content = data['content']
-            return send_sys_message(content)
-        except:
-            return {"state": "fail"}
-
-
-class GetSysMessage(Resource):  # 获取通知
     def get(self):
         try:
-            data = request.get_json()
-            user_id = data['user_id']
-            return get_sys_message(user_id)
+            data = request.args
+            id = data['id']
+            paperid = data['paperid']
+            toid = data['toid']
+            content = data['content']
+            if(comment(id,paperid,content)['state'] == 'success'):
+                return sendmessage(id, toid, COMMENT, '您发布的资源:'+paperid+'收到来自用户：'+id+'的评论')
+        except:
+            return {"state": "fail"}
+
+
+class Reply_Comment(Resource):  # 回复评论
+    def get(self):
+        try:
+            data = request.args
+            id = data['id']
+            toid = data['toid']
+            replyid = data['replyid']
+            content = data['content']
+            if (replycomment(id,replyid,content)['state'] == 'success'):
+                return sendmessage(id, toid, REPLY, '您发布的评论:' + replyid + '收到来自用户：' + id + '的回复')
+
+        except:
+            return {"state": "fail"}
+
+
+class Delete_Comment(Resource):  # 删除评论
+    def get(self):
+        try:
+            data = request.args
+            toid = data['toid']
+            comment_id = data['comment_id']
+            if (deletecomment(comment_id)['state'] == 'success'):
+                return send_sys_sendmessage_toone(toid,DELETECOMMENT,'您的评论：'+comment_id+'已被删除')
+        except:
+            return {"state": "fail"}
+
+
+class Send_Sysmessage(Resource):  # 发送通知
+    def get(self):
+        try:
+            data = request.args
+            content = data['content']
+            return send_sys_message_toall(content)
+        except:
+            return {"state": "fail"}
+
+
+class Get_Sysmessage(Resource):  # 获取通知
+    def get(self):
+        try:
+            data = request.args
+            id = data['id']
+            return getsysmessage(id)
         except:
             return {"state": "fail"}
 
 
 class Certification(Resource):  # 申请认证
-    def post(self):
+    def get(self):
         try:
-            data = request.get_json()
-            user_id = data['user_id']
+            data = request.args
+            id = data['id']
             name = data['name']
             ID_num = data['ID_num']
             text = data['text']
             field = data['field']
-            return certification(user_id, name, ID_num, field, text)
+            if(certification(id,name,ID_num,field,text)['state'] == 'success'):
+                return send_sys_sendmessage_toadmin(APPLY, '收到来自：' + id + '的认证申请，请及时处理')
         except:
-            return {"state": "fail"}
+            return {"state":"fail"}
 
 
-class CommonName(Resource):  # 同名专家申请认证
+class Common_Name(Resource):  # 同名专家申请认证
     def get(self):
         try:
-            data = request.get_json()
+            data = request.args
             professor_name = data['professor_name']
-            return common_name(professor_name)
+            return commonname(professor_name)
         except:
-            return {"state": "fail"}
+            return {"state":"fail"}
 
 
-class DealCertification(Resource):  # 管理员处理认证
-    def post(self):
+class Deal_Certification(Resource):  # 管理员处理认证
+    def get(self):
         try:
-            data = request.get_json()
-            apply_id = data['apply_id']
+            data = request.args
             deal = data['deal']
-            return deal_certification(apply_id, deal)
+            apply_id = data['apply_id']
+            if(deal_certification(apply_id, deal)['state'] == 'success'):
+                return send_sys_sendmessage_toone(apply_id,APPLYRESULT,'您申请认证的结果是：'+deal)
         except:
-            return {"state": "fail"}
+            return {"state":"fail"}
 
         
 # 添加api资源
