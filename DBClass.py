@@ -494,7 +494,7 @@ class DbOperate:
     删除科技资源
     17
     '''
-<<<<<<< HEAD
+
     def rm_resource(self, professor_id, paper_id):
         res = {'state': 'success', 'reason': '删除科技资源，给管理员发送成功'}
         scholar = self.getCol('scmessage').find_one({'scid': professor_id})
@@ -512,10 +512,6 @@ class DbOperate:
     '''
     def deal_request(self,apply_id,deal):
         pass
-
-=======
-    
->>>>>>> 7ff00183dbde525919c71d2147259981ac6f0c4e
 
     #######################################################接口 19-26#######################################################
 
@@ -679,7 +675,3 @@ class DbOperate:
             for user in user_list:
                 msg.insert_one({"content": content, "email": user["email"], "date": time.time(), "type": msg_type})
         return state
-
-
-if __name__ == '__main__':
-    0
