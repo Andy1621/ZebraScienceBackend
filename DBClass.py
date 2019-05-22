@@ -4,19 +4,24 @@ import Config
 import random
 import time
 from pymongo import MongoClient
+from bson.objectid import ObjectId
+
 
 class DbOperate:
     '''
     连接数据库
     '''
+
     def __init__(self):
         self.host = Config.HOST
         self.port = Config.PORT
         self.client = MongoClient(self.host, self.port)
-#######################################################接口 1-9#######################################################
+
+    #######################################################接口 1-9#######################################################
     '''
     取得Business数据库的指定表
     '''
+
     def getCol(self, name):
         db = self.client['Business']
         col = db[name]
@@ -25,6 +30,7 @@ class DbOperate:
     '''
     将url中的scholarID提取出来
     '''
+
     def scurl2id(self, url):
         pattern = re.compile('scholarID\/(.*?)(\?.*?|\s|\Z)')
         results = pattern.findall(url)
@@ -36,8 +42,46 @@ class DbOperate:
                 return ''
 
     '''
+    获取需要显示在页面上的用户数据，并修改res
+    '''
+    def get_user_data(self, find_user, res):
+        # 去掉某些不必要字段
+        find_user.pop('_id')
+        find_user.pop('password')
+        # 将star_list和follow_list中的id和简略信息一并返回
+        # 令star_list列表中存放“资源的简略信息”
+        tmp_star = copy.deepcopy(find_user['star_list'])
+        find_user['star_list'].clear()
+        res['reason'] = '收藏列表获取失败'
+        for one_star in tmp_star:
+            star_info = self.getCol('sci_source').find_one({'paper_id': one_star})
+            star_info.pop('_id')
+            star_info.pop('source_url')
+            star_info.pop('free_download_url')
+            star_info.pop('abstract')
+            find_user['star_list'].append(star_info)
+        # 令follow_list列表中存放“用户的简略信息”
+        tmp_follow = copy.deepcopy(find_user['follow_list'])
+        find_user['follow_list'].clear()
+        res['reason'] = '关注列表获取失败'
+        for one_follow in tmp_follow:
+            follow_info_all = self.getCol('scmessage').find_one({'scid': one_follow})
+            follow_info_simple = {}
+            follow_info_simple['scid'] = one_follow
+            follow_info_simple['name'] = follow_info_all['name']
+            follow_info_simple['mechanism'] = follow_info_all['mechanism']
+            follow_info_simple['citedtimes'] = follow_info_all['citedtimes']
+            follow_info_simple['resultsnumber'] = follow_info_all['resultsnumber']
+            follow_info_simple['field'] = follow_info_all['field']
+            find_user['follow_list'].append(follow_info_simple)
+        # 设置返回值
+        res['state'] = 'success'
+        res['msg'] = find_user
+
+    '''
     1. 邮箱查重 验证码生成并存入数据库 √
     '''
+
     def generate_email_code(self, email):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -77,6 +121,7 @@ class DbOperate:
     '''
     2. 注册用户 √
     '''
+
     def create_user(self, password, email, username, email_code):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -87,12 +132,12 @@ class DbOperate:
                 time_dif = time.time() - real_code['time']
             # 邮箱未注册,验证码表中该用户存在并且5min内并且匹配，插入并设置返回值success
             if has_user == 0 and real_code and time_dif <= 300 and real_code['code'] == email_code:
-                newuser = { 'username': username,
-                            'email': email,
-                            'password': password,
-                            'user_type': 'USER',
-                            'star_list': [],
-                            'follow_list': []
+                newuser = {'username': username,
+                           'email': email,
+                           'password': password,
+                           'user_type': 'USER',
+                           'star_list': [],
+                           'follow_list': []
                            }
                 self.getCol('user').insert_one(newuser)
                 self.getCol('tempcode').delete_one(real_code)
@@ -111,8 +156,9 @@ class DbOperate:
             return res
 
     '''
-    3. 比对密码 √
+    3. 比对密码并返回用户信息 √
     '''
+
     def compare_password(self, password, email):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -121,7 +167,7 @@ class DbOperate:
             if find_user:
                 real_psw = find_user['password']
                 if real_psw == password:
-                    res['state'] = 'success'
+                    self.get_user_data(find_user, res)
                 else:
                     res['reason'] = '密码错误'
             # 用户不存在
@@ -134,6 +180,7 @@ class DbOperate:
     '''
     4. 查询专家（不在意专家是否注册）（返回 专家scolarID 专家姓名 机构名称 被引次数 成果数 所属领域） √
     '''
+
     def search_professor(self, professor_name):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -164,6 +211,7 @@ class DbOperate:
     '''
     5. 获取专家信息 √
     '''
+
     def get_professor_details(self, professor_id):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -196,44 +244,14 @@ class DbOperate:
     '''
     6. 获取用户信息 √
     '''
+
     def get_user_details(self, email):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             find_user = self.getCol('user').find_one({'email': email})
             # 搜索到指定用户
             if find_user:
-                # 去掉某些不必要字段
-                find_user.pop('_id')
-                find_user.pop('password')
-                # 将star_list和follow_list中的id和简略信息一并返回
-                # 令star_list列表中存放“资源的简略信息”
-                tmp_star = copy.deepcopy(find_user['star_list'])
-                find_user['star_list'].clear()
-                res['reason'] = '收藏列表获取失败'
-                for one_star in tmp_star:
-                    star_info = self.getCol('sci_source').find_one({'paperid': one_star})
-                    star_info.pop('_id')
-                    star_info.pop('source_url')
-                    star_info.pop('free_download_url')
-                    star_info.pop('abstract')
-                    find_user['star_list'].append(star_info)
-                # 令follow_list列表中存放“用户的简略信息”
-                tmp_follow = copy.deepcopy(find_user['follow_list'])
-                find_user['follow_list'].clear()
-                res['reason'] = '关注列表获取失败'
-                for one_follow in tmp_follow:
-                    follow_info_all = self.getCol('scmessage').find_one({'scid': one_follow})
-                    follow_info_simple = {}
-                    follow_info_simple['scid'] = one_follow
-                    follow_info_simple['name'] = follow_info_all['name']
-                    follow_info_simple['mechanism'] = follow_info_all['mechanism']
-                    follow_info_simple['citedtimes'] = follow_info_all['citedtimes']
-                    follow_info_simple['resultsnumber'] = follow_info_all['resultsnumber']
-                    follow_info_simple['field'] = follow_info_all['field']
-                    find_user['follow_list'].append(follow_info_simple)
-                # 设置返回值
-                res['state'] = 'success'
-                res['msg'] = find_user
+                self.get_user_data(find_user, res)
             # 用户不存在
             else:
                 res['reason'] = '用户不存在'
@@ -244,6 +262,7 @@ class DbOperate:
     '''
     7. 获取机构信息 √
     '''
+
     def get_organization_details(self, organization_name):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -264,6 +283,7 @@ class DbOperate:
     '''
     8-1. 查询论文（速度比较慢，返回的基本信息有哪些待确认） √
     '''
+
     def search_paper(self, title):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -291,10 +311,11 @@ class DbOperate:
     '''
     8-2. 获取论文全部信息 √
     '''
+
     def get_paper_details(self, paper_id):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
-            find_paper = self.getCol('sci_source').find_one({'paperid': paper_id})
+            find_paper = self.getCol('sci_source').find_one({'paper_id': paper_id})
             # 成功搜索到该论文
             if find_paper:
                 find_paper.pop('_id')
@@ -311,6 +332,7 @@ class DbOperate:
     '''
     9. 查询机构（是否需要返回简介有待确认） √
     '''
+
     def search_organization(self, organization_name):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
@@ -333,27 +355,29 @@ class DbOperate:
             return res
         except:
             return res
-#######################################################接口 10-18#######################################################
+
+    #######################################################接口 10-18#######################################################
     '''
     10
-    收藏/取消收藏资源，根据paperid是否在收藏列表中来判断是收藏还是取消收藏
+    收藏/取消收藏资源，根据paper_id是否在收藏列表中来判断是收藏还是取消收藏
     测试成功！
     '''
-    def collect(self, email, paperid): 
+
+    def collect(self, email, paper_id):
         res = {'state': 'success', 'reason': '用户已收藏该资源'}
-        try: 
+        try:
             user = self.getCol('user').find_one({'email': email})
             star_list = user['star_list']
-            if paperid not in user['star_list']: 
+            if paper_id not in user['star_list']:
                 res = {'state': 'success', 'reason': '用户尚未收藏该资源'}
-                star_list.append(paperid)
-            else: 
-                star_list.remove(paperid)
+                star_list.append(paper_id)
+            else:
+                star_list.remove(paper_id)
             user['star_list'] = star_list
-            self.getCol('user').update_one({'email':  user['email']},  {'$set':  user})
-        except: 
+            self.getCol('user').update_one({'email': user['email']}, {'$set': user})
+        except:
             res = {'state': 'fail', 'reason': '更新数据库失败'}
-        finally: 
+        finally:
             return res
 
     '''
@@ -361,9 +385,10 @@ class DbOperate:
     判断用户是否收藏该作品
     测试成功！
     '''
+
     def is_collect(self, email, paper_id):
         res = {'state': 'yes', 'reason': '用户已收藏该资源'}
-        user = self.getCol('user').find_one({'email':  email})
+        user = self.getCol('user').find_one({'email': email})
         if paper_id not in user['star_list']:
             res = {'state': 'no', 'reasons': '用户尚未收藏该资源'}
         return res
@@ -373,21 +398,22 @@ class DbOperate:
     关注/取消关注学者
     测试成功！
     '''
-    def follow(self, email, professor_id): 
+
+    def follow(self, email, professor_id):
         res = {'state': 'success', 'reason': '用户已关注该学者'}
-        try: 
+        try:
             user = self.getCol('user').find_one({'email': email})
             follow_list = user['follow_list']
-            if professor_id in user['follow_list']: 
+            if professor_id in user['follow_list']:
                 follow_list.remove(professor_id)
-            else: 
+            else:
                 follow_list.append(professor_id)
                 res = {'state': 'success', 'reason': '用户未关注该学者'}
             user['follow_list'] = follow_list
-            self.getCol('user').update_one({'email':  user['email']},  {'$set':  user})
-        except: 
+            self.getCol('user').update_one({'email': user['email']}, {'$set': user})
+        except:
             res = {'state': 'fail', 'reason': '更新数据库失败'}
-        finally: 
+        finally:
             return res
 
     '''
@@ -395,53 +421,57 @@ class DbOperate:
     判断用户是否关注专家
     测试成功！
     '''
-    def is_follow(self, email, professor_id): 
+
+    def is_follow(self, email, professor_id):
         user = self.getCol('user').find_one({'email': email})
         res = {'state': 'yes', 'reason': '用户已关注该专家'}
-        if professor_id not in user['follow_list']: 
+        if professor_id not in user['follow_list']:
             res = {'state': 'no', 'reason': '用户未关注该专家'}
         return res
-    
+
     '''
     14 
     修改个人资料，专家不可改名
     测试成功，但是不知是否要判断修改后的用户名或头像与之前一样
     '''
+
     def change_info(self, email, username, avatar):
-        user = self.getCol('user').find_one({'email':  email})
+        user = self.getCol('user').find_one({'email': email})
         res = {'state': 'success', 'reason': '修改用户名成功'}
-        try: 
+        try:
             if username != '':
                 if user['user_type'] != 'EXPERT':
                     self.getCol('user').update_one({'email': email}, {'$set': {'username': username}})
-                else: 
+                else:
                     res = {'state': 'fail', 'reason': '专家不可改名'}
             elif avatar != '':
-                self.getCol('user').update_one({'email':  email}, {'$set':  {'avatar':  avatar}})
+                self.getCol('user').update_one({'email': email}, {'$set': {'avatar': avatar}})
                 res['reason'] = '修改头像成功'
-            else: 
+            else:
                 res = {'state': 'fail', 'reason': '输入的用户名或上传的头像为空'}
-        except: 
+        except:
             res = {'state': 'fail', 'reason': '数据库更新失败'}
-        finally: 
+        finally:
             print(res)
             return res
 
     '''
     15
-    修改密码，不知是否需要对新的密码进行判断，比如判断其长度以及是否太简单
+    修改密码
+    测试成功
     '''
+
     def change_pwd(self, email, old_password, new_password):
-        user = self.getCol('user').find_one({'email':  email})
-        res = {'state':  'success',  'reason':  '修改密码成功'}
-        try: 
+        user = self.getCol('user').find_one({'email': email})
+        res = {'state': 'success', 'reason': '修改密码成功'}
+        try:
             if user['password'] != old_password:
                 res = {'state': 'fail', 'reason': '原来的密码输入错误'}
-            else: 
-                self.getCol('user').update_one({'email':  user['email']}, {'$set': {'password': new_password}})
-        except: 
+            else:
+                self.getCol('user').update_one({'email': user['email']}, {'$set': {'password': new_password}})
+        except:
             res = {'state': 'fail', 'reason': '数据库更新失败'}
-        finally: 
+        finally:
             print(res)
             return res
 
@@ -450,12 +480,206 @@ class DbOperate:
     增加科技资源
     '''
     def add_resource(self, professor_id, paper_url):
+        res = {'state': 'success', 'reason': '增加科技资源，给管理员发送成功'}
+        scholar = self.getCol('scmessage').find_one({'scid': professor_id})
+        msg_content = scholar['name']+'请求增加科技资源,资源url：'+ paper_url
+        try :
+            self.send_sys_message_to_admin(msg_content)
+        except :
+            res = {'state': 'fail', 'reason': '增加科技资源，给管理员发送消息失败'}
+        finally:
+            return res
+
+    '''
+    删除科技资源
+    17
+    '''
+<<<<<<< HEAD
+    def rm_resource(self, professor_id, paper_id):
+        res = {'state': 'success', 'reason': '删除科技资源，给管理员发送成功'}
+        scholar = self.getCol('scmessage').find_one({'scid': professor_id})
+        msg_content = scholar['name'] + '请求删除科技资源,资源ID：' + paper_id
+        try :
+            self.send_sys_message_to_admin(msg_content)
+        except :
+            res = {'state': 'fail', 'reason': '删除科技资源，给管理员发送消息失败'}
+        finally:
+            return res
+
+    '''
+    18
+    管理员处理修改科技资源申请
+    '''
+    def deal_request(self,apply_id,deal):
         pass
 
-    '''
-    17
+=======
     
+>>>>>>> 7ff00183dbde525919c71d2147259981ac6f0c4e
+
+    #######################################################接口 19-26#######################################################
+
     '''
+    The 19th Method
+    评论资源
+    '''
+    def conmment(self, id, paper_id, comment_str):
+        state = {'state': 'success', "reasons": ""}
+        comment_list = self.client.Business.comment
+        papers = self.client.Business.sci_source
+        query_paper_id = {"paper_id": paper_id}
+        user_collection = self.client.Business.user
+        if papers.find_one(query_paper_id) is None:
+            state["state"] = "fail"
+            state["reasons"] = "paper not found"
+        elif user_collection.find_one({"email": id}) is None:
+            state["state"] = "fail"
+            state["reasons"] = "user not found"
+        else:
+            this_comment = {"email": id, "paper_id": paper_id, "date": time.time(),
+                            "comment_str": comment_str, "replies": []}
+            comment_list.insert_one(this_comment)
+        return state
+
+    '''
+    The 20th Method
+    回复评论
+    '''
+    def reply_conmment(self, comment_id, userid, comment_str):
+        state = {'state': 'success', "reasons": ""}
+        comment_list = self.client.Business.comment
+        user_collection = self.client.Business.user
+        new_comment = comment_list.find_one({"_id": ObjectId(comment_id)})
+        if new_comment is None:
+            state["state"] = "fail"
+            state["reasons"] = "comment not found"
+        elif user_collection.find_one({"email": userid}) is None:
+            state["state"] = "fail"
+            state["reasons"] = "user not found"
+        else:
+            new_comment["replies"].append({"email": userid, "date": time.time(),
+                                           "comment_str": comment_str})
+            comment_list.update({"_id": ObjectId(comment_id)}, new_comment)
+        return state
+
+    '''
+    The 21st Method
+    删除评论
+    '''
+    def delete_conmment(self, comment_id):
+        state = {'state': 'success', "reasons": ""}
+        comment_list = self.client.Business.comment
+        if comment_list.find_one({"_id": ObjectId(comment_id)}) is None:
+            state["state"] = "fail"
+            state["reasons"] = "comment not found"
+        else:
+            comment_list.remove({"comment_id": ObjectId(comment_id)})
+        return state
+
+    '''
+    The 22nd Method
+    发送系统通知（除管理员）
+    '''
+    def send_sys_message_to_all(self, content, msg_type):
+        state = {'state': 'success', "reasons": ""}
+        msg = self.client.Business.message
+        user_list = self.client.Business.user.find({"user_type": {"$ne": "ADMIN"}},
+                                                   {"email": 1, "_id": 0, "user_name": 0, "password": 0,
+                                                    "avatar": 0, "user_type": 0, "star_list": 0, "follow_list": 0})
+        if len(user_list) == 0:
+            state["state"] = "fail"
+        else:
+            for user in user_list:
+                msg.insert_one({"content": content, "email": user["email"], "date": time.time(), "type": msg_type})
+        return state
+
+    '''
+    The 23th Method
+    获取通知
+    '''
+    def get_sys_message(self, user_id):
+        state = {'state': 'success', "reasons": "", "messages": []}
+        message = self.client.Business.message
+        msg_list = message.find({"email": user_id}, {"email": 0, "content": 1})
+        for msg in msg_list:
+            state["messages"].append({"content": msg["content"], "date": msg["date"], "type": msg["type"]})
+        return state
+
+    '''
+    The 24th Method
+    申请认证（实际是插入申请认证表）
+    '''
+    def certification(self, email, name, ID, field, text):
+        state = {'state': 'success', "reasons": ""}
+        applies = self.client.Business.application
+        expert_list = self.client.Business.user.find({"user_type": "EXPERT", "email": email})
+        if len(expert_list) > 0:
+            state["state"] = "fail"
+        else:
+            app_list = applies.find({"email": email})
+            if len(app_list) > 0:
+                state["state"] = "fail"
+            else:
+                applies.insert_one({{"name": name, "ID": ID, "field": field, "email": email, "text": text, "date": time.time()}})
+        return state
+
+    '''
+    The 25th Method
+    同名专家
+    '''
+    def common_name(self, professor_name):
+        state = {'state': 'success', "reasons": "", "user_ids": []}
+        expert_list = self.client.Business.user.find({"user_type": "EXPERT", "username": professor_name})
+        if len(expert_list) == 0:
+            state["state"] = "fail"
+        else:
+            for expert in expert_list:
+                state["user_ids"].append(expert["email"])
+        return state
+
+    '''
+    The 26th Method
+    管理员处理认证
+    '''
+    def deal_certification(self, apply_id, deal):
+        state = {'state': 'success', "reasons": "", "names": []}
+        # ???
+        return state
+
+    '''
+    The 27th Method
+    发送系统通知（仅管理员）
+    '''
+    def send_sys_message_to_admin(self, content, msg_type):
+        state = {'state': 'success', "reasons": ""}
+        msg = self.client.Business.message
+        user_list = self.client.Business.user.find({"user_type": "ADMIN"},
+                                                   {"email": 1, "_id": 0, "user_name": 0, "password": 0,
+                                                    "avatar": 0, "user_type": 0, "star_list": 0, "follow_list": 0})
+        if len(user_list) == 0:
+            state["state"] = "fail"
+        else:
+            for user in user_list:
+                msg.insert_one({"content": content, "email": user["email"], "date": time.time(), "type": msg_type})
+        return state
+
+    '''
+    The 28th Method
+    发送系统通知（单人）
+    '''
+    def send_sys_message_to_one(self, content, email, msg_type):
+        state = {'state': 'success', "reasons": ""}
+        msg = self.client.Business.message
+        user_list = self.client.Business.user.find({"email": email},
+                                                   {"email": 1, "_id": 0, "user_name": 0, "password": 0,
+                                                    "avatar": 0, "user_type": 0, "star_list": 0, "follow_list": 0})
+        if len(user_list) == 0:
+            state["state"] = "fail"
+        else:
+            for user in user_list:
+                msg.insert_one({"content": content, "email": user["email"], "date": time.time(), "type": msg_type})
+        return state
 
 
-#######################################################接口 19-26#######################################################
+if __name__ == '__main__':
+    0
