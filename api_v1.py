@@ -72,13 +72,13 @@ class Search(Resource):  # 登录请求
 
 
 class GetDetail(Resource):  # 登录请求
-    def get(self, professor_id=None, organization_id=None, user_id=None):
+    def get(self, professor_id=None, organization_name=None, user_id=None):
         res = {"state": "fail"}
         try:
             if professor_id:  # 获取专家信息
                 res = db.get_professor_details(professor_id)
-            elif organization_id:  # 获取组织信息
-                res = db.get_organization_details(organization_id)
+            elif organization_name:  # 获取组织信息
+                res = db.get_organization_details(organization_name)
             elif user_id:  # 获取普通用户信息
                 res = db.get_user_details(user_id)
             # 非法搜索
@@ -362,7 +362,7 @@ api.add_resource(Search, "/api/v1/search_paper/<string:title>", endpoint="search
 api.add_resource(Search, "/api/v1/search_organization/<string:organization_name>", endpoint="search_organization")
 api.add_resource(GetDetail, "/api/v1/professor_detail/<string:professor_id>", endpoint="professor_detail")
 api.add_resource(GetDetail, "/api/v1/user_detail/<string:user_id>", endpoint="user_detail")
-api.add_resource(GetDetail, "/api/v1/organization_detail/<string:organization_id>", endpoint="organization_detail")
+api.add_resource(GetDetail, "/api/v1/organization_detail/<string:organization_name>", endpoint="organization_detail")
 api.add_resource(Collection, "/api/v1/collect", endpoint="collect")
 api.add_resource(Collection, "/api/v1/is_collect", endpoint="is_collect")
 api.add_resource(Follow, "/api/v1/follow", endpoint="follow")
