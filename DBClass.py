@@ -85,9 +85,11 @@ class DbOperate:
     def generate_email_code(self, email):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
-            search_res1 = self.getCol('user').find({'email': email}).count()
-            # 邮箱未被注册
-            if search_res1 == 0:
+            test = self.getCol('user').find_one({'email': email})
+            # 邮箱已被注册
+            if test:
+                res['reason'] = '邮箱已被注册'
+            else:
                 col_tempcode = self.getCol('tempcode')
                 search_res2 = col_tempcode.find_one({'email': email})
                 # 申请过注册
@@ -112,8 +114,6 @@ class DbOperate:
                 # 设置返回值res
                 res['email_code'] = t_code
                 res['state'] = 'success'
-            else:
-                res['reason'] = '邮箱已被注册'
             return res
         except:
             return res
@@ -125,13 +125,16 @@ class DbOperate:
     def create_user(self, password, email, username, email_code):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
-            has_user = self.getCol('user').find({'email': email}).count()
+            has_user = self.getCol('user').find_one({'email': email})
             real_code = self.getCol('tempcode').find_one({'email': email})
             # 这里想记录时间差，但是得先保证 real_code 不为空，否则异常
             if real_code:
                 time_dif = time.time() - real_code['time']
+            # 排除邮箱已注册情况
+            if has_user:
+                res['reason'] = '邮箱已被注册'
             # 邮箱未注册,验证码表中该用户存在并且5min内并且匹配，插入并设置返回值success
-            if has_user == 0 and real_code and time_dif <= 300 and real_code['code'] == email_code:
+            elif real_code and time_dif <= 300 and real_code['code'] == email_code:
                 newuser = {'username': username,
                            'email': email,
                            'password': password,
@@ -143,8 +146,6 @@ class DbOperate:
                 self.getCol('tempcode').delete_one(real_code)
                 res['state'] = 'success'
             # 枚举异常情况
-            elif has_user != 0:
-                res['reason'] = '邮箱已被注册'
             elif real_code and time_dif > 300:
                 res['reason'] = '验证码过期'
             elif real_code and real_code['code'] != email_code:
@@ -186,8 +187,9 @@ class DbOperate:
         try:
             # 不在意专家是否已注册
             experts = self.getCol('scmessage').find({'name': professor_name})
+            test = self.getCol('scmessage').find_one({'name': professor_name})
             # 在专家总表中搜索到该姓名专家
-            if experts.count() != 0:
+            if test:
                 experts_list = []
                 # 根据所查同名专家列表experts，逐个专家提取其中基本信息到tmp中，并放入结果experts_list中
                 for one_exp in experts:
@@ -289,8 +291,9 @@ class DbOperate:
         try:
             # 根据标题模糊查询
             papers = self.getCol('sci_source').find({'name': {'$regex': title}})
+            test = self.getCol('sci_source').find_one({'name': {'$regex': title}})
             # 根据标题模糊匹配查找到相关论文列表
-            if papers.count() != 0:
+            if test:
                 papers_list = []
                 # 根据所查到的论文列表papers，逐个论文提取其中基本信息（去除不必要字段），并放入结果papers_list中
                 for one_paper in papers:
@@ -338,8 +341,9 @@ class DbOperate:
         try:
             # 根据名称模糊查询
             orgs = self.getCol('mechanism').find({'mechanism': {'$regex': organization_name}})
+            test = self.getCol('mechanism').find_one({'mechanism': {'$regex': organization_name}})
             # 根据名称模糊匹配查找到相关机构列表
-            if orgs.count() != 0:
+            if test:
                 org_list = []
                 # 根据所查到的机构列表orgs，逐个机构提取其中基本信息（去除不必要字段），并放入结果org_list中
                 for one_org in orgs:
@@ -519,7 +523,7 @@ class DbOperate:
     The 19th Method
     评论资源
     '''
-    def conmment(self, id, paper_id, comment_str):
+    def comment(self, id, paper_id, comment_str):
         state = {'state': 'success', "reasons": ""}
         comment_list = self.client.Business.comment
         papers = self.client.Business.sci_source
@@ -541,7 +545,7 @@ class DbOperate:
     The 20th Method
     回复评论
     '''
-    def reply_conmment(self, comment_id, userid, comment_str):
+    def reply_comment(self, comment_id, userid, comment_str):
         state = {'state': 'success', "reasons": ""}
         comment_list = self.client.Business.comment
         user_collection = self.client.Business.user
@@ -562,7 +566,7 @@ class DbOperate:
     The 21st Method
     删除评论
     '''
-    def delete_conmment(self, comment_id):
+    def delete_comment(self, comment_id):
         state = {'state': 'success', "reasons": ""}
         comment_list = self.client.Business.comment
         if comment_list.find_one({"_id": ObjectId(comment_id)}) is None:
