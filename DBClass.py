@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import re
 import Config
 import random
@@ -23,7 +23,7 @@ class DbOperate:
     '''
 
     def getCol(self, name):
-        db = self.client['Business']
+        db = self.client[Config.DATABASE]
         col = db[name]
         return col
 
@@ -54,7 +54,7 @@ class DbOperate:
         find_user['star_list'].clear()
         res['reason'] = '收藏列表获取失败'
         for one_star in tmp_star:
-            star_info = self.getCol('sci_source').find_one({'paper_id': one_star})
+            star_info = self.getCol('sci_source').find_one({'paperid': one_star})
             star_info.pop('_id')
             star_info.pop('source_url')
             star_info.pop('free_download_url')
@@ -74,6 +74,11 @@ class DbOperate:
             follow_info_simple['resultsnumber'] = follow_info_all['resultsnumber']
             follow_info_simple['field'] = follow_info_all['field']
             find_user['follow_list'].append(follow_info_simple)
+        # 若是专家类型用户登录，额外返回专家信息，暂时只有论文列表paper_list
+        if find_user['user_type'] == 'EXPERT':
+            res['reason'] = '获取论文列表失败'
+            same_exp = self.getCol('scmessage').find_one({'scid': find_user['scid']})
+            find_user['paper_list'] = same_exp['paper']
         # 设置返回值
         res['state'] = 'success'
         res['msg'] = find_user
@@ -223,7 +228,6 @@ class DbOperate:
                 # 去除部分没用的字段
                 find_exp.pop('_id')
                 find_exp.pop('scurl')
-                find_exp.pop('collect_papers')
                 # 对于copinfo（合作专家）字段，从其中的url字段提取scolarID，并将其修改为scid字段
                 tmp = find_exp['copinfo']
                 res['reason'] = '专家ID提取失败'
@@ -318,7 +322,7 @@ class DbOperate:
     def get_paper_details(self, paper_id):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
-            find_paper = self.getCol('sci_source').find_one({'paper_id': paper_id})
+            find_paper = self.getCol('sci_source').find_one({'paperid': paper_id})
             # 成功搜索到该论文
             if find_paper:
                 find_paper.pop('_id')
