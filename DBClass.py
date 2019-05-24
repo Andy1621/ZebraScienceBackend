@@ -523,7 +523,7 @@ class DbOperate:
     The 19th Method
     评论资源
     '''
-    def comment(self, id, paper_id, comment_str):
+    def comment(self, email, paper_id, content):
         state = {'state': 'success', "reasons": ""}
         comment_list = self.client.Business.comment
         papers = self.client.Business.sci_source
@@ -532,12 +532,12 @@ class DbOperate:
         if papers.find_one(query_paper_id) is None:
             state["state"] = "fail"
             state["reasons"] = "paper not found"
-        elif user_collection.find_one({"email": id}) is None:
+        elif user_collection.find_one({"email": email}) is None:
             state["state"] = "fail"
             state["reasons"] = "user not found"
         else:
-            this_comment = {"email": id, "paper_id": paper_id, "date": time.time(),
-                            "comment_str": comment_str, "replies": []}
+            this_comment = {"email": email, "paper_id": paper_id, "date": time.time(),
+                            "content": content, "replies": []}
             comment_list.insert_one(this_comment)
         return state
 
@@ -545,7 +545,7 @@ class DbOperate:
     The 20th Method
     回复评论
     '''
-    def reply_comment(self, comment_id, userid, comment_str):
+    def reply_comment(self, comment_id, email, content):
         state = {'state': 'success', "reasons": ""}
         comment_list = self.client.Business.comment
         user_collection = self.client.Business.user
@@ -553,12 +553,12 @@ class DbOperate:
         if new_comment is None:
             state["state"] = "fail"
             state["reasons"] = "comment not found"
-        elif user_collection.find_one({"email": userid}) is None:
+        elif user_collection.find_one({"email": email}) is None:
             state["state"] = "fail"
             state["reasons"] = "user not found"
         else:
-            new_comment["replies"].append({"email": userid, "date": time.time(),
-                                           "comment_str": comment_str})
+            new_comment["replies"].append({"email": email, "date": time.time(),
+                                           "content": content})
             comment_list.update({"_id": ObjectId(comment_id)}, new_comment)
         return state
 
@@ -580,7 +580,7 @@ class DbOperate:
     The 22nd Method
     发送系统通知（除管理员）
     '''
-    def send_sys_message_to_all(self, content, msg_type):
+    def send_sys_message_to_all(self, msg_type, content):
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"user_type": {"$ne": "ADMIN"}},
@@ -597,10 +597,10 @@ class DbOperate:
     The 23th Method
     获取通知
     '''
-    def get_sys_message(self, user_id):
+    def get_sys_message(self, email):
         state = {'state': 'success', "reasons": "", "messages": []}
         message = self.client.Business.message
-        msg_list = message.find({"email": user_id}, {"email": 0, "content": 1})
+        msg_list = message.find({"email": email}, {"email": 0, "content": 1})
         for msg in msg_list:
             state["messages"].append({"content": msg["content"], "date": msg["date"], "type": msg["type"]})
         return state
@@ -609,8 +609,8 @@ class DbOperate:
     The 24th Method
     申请认证（实际是插入申请认证表）
     '''
-    def certification(self, email, name, ID, field, text):
-        state = {'state': 'success', "reasons": ""}
+    def certification(self, email, name, id_, field, text):
+        state = {'state': 'success', "reasons": "", "_id": ""}
         applies = self.client.Business.application
         expert_list = self.client.Business.user.find({"user_type": "EXPERT", "email": email})
         if len(expert_list) > 0:
@@ -620,7 +620,8 @@ class DbOperate:
             if len(app_list) > 0:
                 state["state"] = "fail"
             else:
-                applies.insert_one({{"name": name, "ID": ID, "field": field, "email": email, "text": text, "date": time.time()}})
+                result = applies.insert_one({{"name": name, "ID": id_, "field": field, "email": email, "text": text, "date": time.time(), "state": "waiting"}})
+                state["_id"] = result.inserted_id
         return state
 
     '''
@@ -639,18 +640,36 @@ class DbOperate:
 
     '''
     The 26th Method
-    管理员处理认证
+    管理员处理认证 deal为bool变量
     '''
     def deal_certification(self, apply_id, deal):
-        state = {'state': 'success', "reasons": "", "names": []}
-        # ???
+        state = {'state': 'success', "reasons": "", "name": "", "email": ""}
+        applies = self.client.Business.application
+        apply = applies.find_one({"_id": ObjectId(apply_id)})
+        if apply is None:
+            state["state"] = "fail"
+            state["reasons"] = "apply not found"
+        elif apply["state"] is not "waiting":
+            state["state"] = "fail"
+            state["reasons"] = "apply is already dealt with"
+        else:
+            if deal:
+                apply["state"] = "accepted"
+                result = self.client.Business.user.update_many({"email": apply["email"], "user_type": "USER"}, {"user_type": "EXPERT"})
+                if result.matched_count == 0:
+                    state["state"] = "fail"
+                    state["reason"] = "but nothing changed"
+                state["name"] = apply["name"]
+                state["email"] = apply["email"]
+            else:
+                apply["state"] = "refused"
         return state
 
     '''
     The 27th Method
     发送系统通知（仅管理员）
     '''
-    def send_sys_message_to_admin(self, content, msg_type):
+    def send_sys_message_to_admin(self, msg_type, content):
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"user_type": "ADMIN"},
@@ -667,7 +686,7 @@ class DbOperate:
     The 28th Method
     发送系统通知（单人）
     '''
-    def send_sys_message_to_one(self, content, email, msg_type):
+    def send_sys_message_to_one(self, msg_type, content, email):
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"email": email},

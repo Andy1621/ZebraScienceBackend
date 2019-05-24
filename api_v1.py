@@ -231,15 +231,16 @@ class Comment(Resource):  # 评论资源
         res = {"state": "fail"}
         try:
             data = request.args
-            from_id = data.get('from_id')
+            from_email = data.get('from_email')
             paper_id = data.get('paper_id')
-            to_id = data.get('to_id')
+            to_email = data.get('to_email')
             content = data.get('content')
             paper_name = data.get('paper_name')
             from_name = data.get('from_name')
-            res = db.comment(from_id, paper_id, content)
+            res = db.comment(from_email, paper_id, content)
             if res['state'] == 'success':
-                res = db.send_sys_message_to_one(to_id, 'COMMENT', '您的资源:《' + paper_name + '》收到来自用户：' + from_name + '的评论')
+                res = db.send_sys_message_to_one('COMMENT', '您的资源:《' + paper_name + '》收到来自用户：'
+                                                 + from_name + '的评论', to_email)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -250,15 +251,16 @@ class ReplyComment(Resource):  # 回复评论
         res = {"state": "fail"}
         try:
             data = request.args
-            from_id = data.get('from_id')
-            to_id = data.get('to_id')
-            reply_id = data.get('reply_id')
+            from_email = data.get('from_email')
+            to_email = data.get('to_email')
+            comment_id = data.get('reply_id')
             content = data.get('content')
             comment = data.get('comment')
             from_name = data.get('from_name')
-            res = db.replycomment(from_id, reply_id, content)
+            res = db.reply_comment(comment_id, from_email, content)
             if res['state'] == 'success':
-                res = db.send_sys_message_to_one(to_id, 'REPLY', '您发布的评论: "' + comment + '"收到来自用户：' + from_name + '的回复')
+                res = db.send_sys_message_to_one('REPLY', '您发布的评论: "' + comment + '"收到来自用户：'
+                                                 + from_name + '的回复', to_email)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -271,10 +273,10 @@ class DeleteComment(Resource):  # 删除评论
             data = request.args
             to_id = data.get('to_id')
             comment_id = data.get('comment_id')
-            comment = data.get('comment')
+            content = data.get('content')
             res = db.delete_comment(comment_id)
             if res['state'] == 'success':
-                res = db.send_sys_message_to_one(to_id, 'DELETECOMMENT', '您的评论："' + comment + '"已被删除')
+                res = db.send_sys_message_to_one(to_id, 'DELETECOMMENT', '您的评论："' + content + '"已被删除')
                 return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -292,13 +294,13 @@ class SendSysMessage(Resource):  # 发送通知
             return dumps(res, ensure_ascii=False)
 
 
-class GetSysmessage(Resource):  # 获取通知
+class GetSysMessage(Resource):  # 获取通知
     def get(self):
         res = {"state": "fail"}
         try:
             data = request.args
-            user_id = data.get('user_id')
-            res = db.get_sys_message(user_id)
+            email = data.get('email')
+            res = db.get_sys_message(email)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -309,29 +311,29 @@ class Certification(Resource):  # 申请认证
         res = {"state": "fail"}
         try:
             data = request.args
-            user_id = data.get('user_id')
+            email = data.get('email')
             name = data.get('name')
             ID_num = data.get('ID_num')
             text = data.get('text')
             field = data.get('field')
-            res = db.certification(user_id, name, ID_num, field, text)
+            res = db.certification(email, name, ID_num, field, text)
             if res['state'] == 'success':
-                res = db.send_sys_sendmessage_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理')
+                res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理')
                 return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
 
-class CommonName(Resource):  # 同名专家申请认证
-    def get(self):
-        res = {"state": "fail"}
-        try:
-            data = request.args
-            professor_name = data.get('professor_name')
-            res = db.commonname(professor_name)
-            return dumps(res, ensure_ascii=False)
-        except:
-            return dumps(res, ensure_ascii=False)
+# class CommonName(Resource):  # 同名专家申请认证
+#     def get(self):
+#         res = {"state": "fail"}
+#         try:
+#             data = request.args
+#             professor_name = data.get('professor_name')
+#             res = db.common_name(professor_name)
+#             return dumps(res, ensure_ascii=False)
+#         except:
+#             return dumps(res, ensure_ascii=False)
 
 
 class DealCertification(Resource):  # 管理员处理认证
@@ -345,8 +347,8 @@ class DealCertification(Resource):  # 管理员处理认证
             if res['state'] == 'success':
                 content = res['name'] + ",恭喜您申请认证成功"
                 if deal == "no":
-                    content = res['name'] + "很抱歉您申请失败"
-                res = db.send_sys_sendmessage_to_one(res['user_id'], 'APPLYRESULT', content)
+                    content = res['name'] + ",很抱歉您申请失败"
+                res = db.send_sys_message_to_one('APPLYRESULT', content, res['email'])
                 return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -376,9 +378,9 @@ api.add_resource(Comment, "/api/v1/comment", endpoint="comment")
 api.add_resource(ReplyComment, "/api/v1/reply_comment", endpoint="reply_comment")
 api.add_resource(DeleteComment, "/api/v1/delete_comment", endpoint="delete_comment")
 api.add_resource(SendSysMessage, "/api/v1/send_sys_message", endpoint="send_sys_message")
-api.add_resource(GetSysmessage, "/api/v1/get_sys_message", endpoint="get_sys_message")
+api.add_resource(GetSysMessage, "/api/v1/get_sys_message", endpoint="get_sys_message")
 api.add_resource(Certification, "/api/v1/certification", endpoint="certification")
-api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
+# api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
 api.add_resource(DealCertification, "/api/v1/deal_certification", endpoint="deal_certification")
 
 if __name__ == "__main__":
