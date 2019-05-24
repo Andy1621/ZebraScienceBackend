@@ -456,7 +456,6 @@ class DbOperate:
         except:
             res = {'state': 'fail', 'reason': '数据库更新失败'}
         finally:
-            print(res)
             return res
 
     '''
@@ -476,7 +475,6 @@ class DbOperate:
         except:
             res = {'state': 'fail', 'reason': '数据库更新失败'}
         finally:
-            print(res)
             return res
 
     '''
@@ -484,13 +482,16 @@ class DbOperate:
     增加科技资源
     '''
     def add_resource(self, professor_id, paper_url):
-        res = {'state': 'success', 'reason': '增加科技资源，给管理员发送成功'}
+        res = {'state': 'success', 'reason': '请求增加资源成功'}
         scholar = self.getCol('scmessage').find_one({'scid': professor_id})
-        msg_content = scholar['name']+'请求增加科技资源,资源url：'+ paper_url
-        try :
-            self.send_sys_message_to_admin(msg_content)
-        except :
-            res = {'state': 'fail', 'reason': '增加科技资源，给管理员发送消息失败'}
+        try:
+            resource_application = self.client.Business.resource_application
+            resource_application.insert_one({{"professor_id": professor_id, "paper_url": paper_url,
+                                              "email": scholar['email'], "name": scholar['name'],
+                                              "state": "waiting", "type": "ADD"}})
+            res["name"] = scholar['name']
+        except:
+            res = {'state': 'fail', 'reason': '请求增加科技资源失败'}
         finally:
             return res
 
@@ -500,22 +501,49 @@ class DbOperate:
     '''
 
     def rm_resource(self, professor_id, paper_id):
-        res = {'state': 'success', 'reason': '删除科技资源，给管理员发送成功'}
+        res = {'state': 'success', 'reason': '请求删除科技资源成功'}
         scholar = self.getCol('scmessage').find_one({'scid': professor_id})
-        msg_content = scholar['name'] + '请求删除科技资源,资源ID：' + paper_id
-        try :
-            self.send_sys_message_to_admin(msg_content)
+        paper = self.getCol('sci_source').find_one({'paperid': paper_id})
+        try:
+            resource_application = self.client.Business.resource_application
+            resource_application.insert_one({{"professor_id": professor_id, "paper_id": paper_id,
+                                              "email": scholar['email'], "name": scholar['name'],
+                                              "state": "waiting", "type": "DELETE"}})
+            res["name"] = scholar['name']
+            res["paper_name"] = paper['name']
         except :
-            res = {'state': 'fail', 'reason': '删除科技资源，给管理员发送消息失败'}
+            res = {'state': 'fail', 'reason': '请求删除科技资源失败'}
         finally:
             return res
 
     '''
     18
-    管理员处理修改科技资源申请
+    管理员处理修改科技资源申请，现在手动处理增加资源请求，审查论文url，手动添加数据库内容，管理员请通过后再确认同意增加
     '''
-    def deal_request(self,apply_id,deal):
-        pass
+    def deal_request(self, apply_id, deal):
+        state = {'state': 'success', "reasons": "", "name": "", "email": ""}
+        resource_application = self.client.Business.resource_application
+        apply = resource_application.find_one({"_id": ObjectId(apply_id)})
+        if apply is None:
+            state["state"] = "fail"
+            state["reasons"] = "apply not found"
+        elif apply["state"] is not "waiting":
+            state["state"] = "fail"
+            state["reasons"] = "apply is already dealt with"
+        else:
+            if deal:
+                apply["state"] = "accepted"
+                result = self.client.Business.user.update_many({"email": apply["email"], "user_type": "USER"},
+                                                               {"user_type": "EXPERT"})
+                if result.matched_count == 0:
+                    state["state"] = "fail"
+                    state["reason"] = "but nothing changed"
+                state["name"] = apply["name"]
+                state["email"] = apply["email"]
+                state["type"] = apply["type"]
+            else:
+                apply["state"] = "refused"
+        return state
 
     #######################################################接口 19-26#######################################################
 
@@ -615,10 +643,12 @@ class DbOperate:
         expert_list = self.client.Business.user.find({"user_type": "EXPERT", "email": email})
         if len(expert_list) > 0:
             state["state"] = "fail"
+            state["reason"] = "该邮箱已被其他专家认证"
         else:
             app_list = applies.find({"email": email})
             if len(app_list) > 0:
                 state["state"] = "fail"
+                state["state"] = "您已提交申请，请勿重复提交"
             else:
                 result = applies.insert_one({{"name": name, "ID": id_, "field": field, "email": email, "text": text, "date": time.time(), "state": "waiting"}})
                 state["_id"] = result.inserted_id

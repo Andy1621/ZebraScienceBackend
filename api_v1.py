@@ -72,7 +72,7 @@ class Search(Resource):  # 登录请求
 
 
 class GetDetail(Resource):  # 登录请求
-    def get(self, professor_id=None, organization_name=None, user_id=None):
+    def get(self, professor_id=None, organization_name=None, user_id=None, paper_id=None):
         res = {"state": "fail"}
         try:
             if professor_id:  # 获取专家信息
@@ -81,6 +81,8 @@ class GetDetail(Resource):  # 登录请求
                 res = db.get_organization_details(organization_name)
             elif user_id:  # 获取普通用户信息
                 res = db.get_user_details(user_id)
+            elif paper_id:  # 获取论文信息
+                res = db.get_paper_details(paper_id)
             # 非法搜索
             return dumps(res, ensure_ascii=False)
         except:
@@ -197,7 +199,10 @@ class ChangeResource(Resource):  # 增加删除资源
             professor_id = data.get('professor_id')
             paper_url = data.get('paper_url')
             res = db.add_resource(professor_id, paper_url)
-            return dumps(res, ensure_ascii=False)
+            if res['state'] == 'success':
+                res = db.send_sys_message_to_admin('ADDRESOURCE', '收到来自：' + res['name']
+                                                   + '的增加论文请求，请求链接为：' + paper_url + ',请及时处理')
+                return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
@@ -208,7 +213,10 @@ class ChangeResource(Resource):  # 增加删除资源
             professor_id = data.get('professor_id')
             paper_id = data.get('paper_id')
             res = db.rm_resource(professor_id, paper_id)
-            return dumps(res, ensure_ascii=False)
+            if res['state'] == 'success':
+                res = db.send_sys_message_to_admin('DELETERESOURCE', '收到来自：' + res['name']
+                                                   + '的删除论文请求，删除论文题目为《' + res['paper_name'] + '》请及时处理')
+                return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
@@ -217,11 +225,22 @@ class DealRequest(Resource):  # 管理员处理申请
     def post(self):
         res = {"state": "fail"}
         try:
-            data = request.get_json()
-            apply_id = data.get('apply_id')
+            data = request.args
             deal = data.get('deal')
+            apply_id = data.get('apply_id')
             res = db.deal_request(apply_id, deal)
-            return dumps(res, ensure_ascii=False)
+            if res['state'] == 'success':
+                if res['type'] == 'ADD':
+                    content = res['name'] + ",恭喜您申请增加论文成功"
+                    if not deal:
+                        content = res['name'] + ",很抱歉您申请增加论文失败"
+                    res = db.send_sys_message_to_one('RESOURCERESULT', content, res['email'])
+                elif res['type'] == 'DELETE':
+                    content = res['name'] + ",恭喜您申请认证成功"
+                    if not deal:
+                        content = res['name'] + ",很抱歉您申请失败"
+                    res = db.send_sys_message_to_one('RESOURCERESULT', content, res['email'])
+                return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
@@ -346,8 +365,8 @@ class DealCertification(Resource):  # 管理员处理认证
             res = db.deal_certification(apply_id, deal)
             if res['state'] == 'success':
                 content = res['name'] + ",恭喜您申请认证成功"
-                if deal == "no":
-                    content = res['name'] + ",很抱歉您申请失败"
+                if not deal:
+                    content = res['name'] + ",很抱歉您的申请认证被拒绝"
                 res = db.send_sys_message_to_one('APPLYRESULT', content, res['email'])
                 return dumps(res, ensure_ascii=False)
         except:
@@ -365,6 +384,7 @@ api.add_resource(Search, "/api/v1/search_organization/<string:organization_name>
 api.add_resource(GetDetail, "/api/v1/professor_detail/<string:professor_id>", endpoint="professor_detail")
 api.add_resource(GetDetail, "/api/v1/user_detail/<string:user_id>", endpoint="user_detail")
 api.add_resource(GetDetail, "/api/v1/organization_detail/<string:organization_name>", endpoint="organization_detail")
+api.add_resource(GetDetail, "/api/v1/paper_detail/<string:paper_id>", endpoint="paper_id")
 api.add_resource(Collection, "/api/v1/collect", endpoint="collect")
 api.add_resource(Collection, "/api/v1/is_collect", endpoint="is_collect")
 api.add_resource(Follow, "/api/v1/follow", endpoint="follow")
