@@ -579,7 +579,8 @@ class DbOperate:
             state["state"] = "fail"
             state["reasons"] = "user not found"
         else:
-            this_comment = {"email": email, "paper_id": paper_id, "date": time.time(),
+            this_comment = {"email": email, "paper_id": paper_id,
+                            "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
                             "content": content, "replies": []}
             comment_list.insert_one(this_comment)
         return state
@@ -600,7 +601,8 @@ class DbOperate:
             state["state"] = "fail"
             state["reasons"] = "user not found"
         else:
-            new_comment["replies"].append({"email": email, "date": time.time(),
+            new_comment["replies"].append({"email": email,
+                                           "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
                                            "content": content})
             comment_list.update({"_id": ObjectId(comment_id)}, new_comment)
         return state
@@ -633,7 +635,9 @@ class DbOperate:
             state["state"] = "fail"
         else:
             for user in user_list:
-                msg.insert_one({"content": content, "email": user["email"], "date": time.time(), "type": msg_type})
+                msg.insert_one({"content": content, "email": user["email"],
+                                "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
+                                "type": msg_type})
         return state
 
     '''
@@ -665,7 +669,9 @@ class DbOperate:
                 state["state"] = "fail"
                 state["state"] = "您已提交申请，请勿重复提交"
             else:
-                result = applies.insert_one({{"name": name, "ID": id_, "field": field, "email": email, "text": text, "date": time.time(), "state": "waiting"}})
+                result = applies.insert_one({{"name": name, "ID": id_, "field": field, "email": email, "text": text,
+                                              "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
+                                              "state": "waiting"}})
                 state["_id"] = result.inserted_id
         return state
 
@@ -724,7 +730,9 @@ class DbOperate:
             state["state"] = "fail"
         else:
             for user in user_list:
-                msg.insert_one({"content": content, "email": user["email"], "date": time.time(), "type": msg_type})
+                msg.insert_one({"content": content, "email": user["email"],
+                                "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
+                                "type": msg_type})
         return state
 
     '''
@@ -741,7 +749,9 @@ class DbOperate:
             state["state"] = "fail"
         else:
             for user in user_list:
-                msg.insert_one({"content": content, "email": user["email"], "date": time.time(), "type": msg_type})
+                msg.insert_one({"content": content, "email": user["email"],
+                                "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
+                                "type": msg_type})
         return state
 
     '''
