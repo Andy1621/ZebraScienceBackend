@@ -252,14 +252,8 @@ class Comment(Resource):  # 评论资源
             data = request.args
             from_email = data.get('from_email')
             paper_id = data.get('paper_id')
-            to_email = data.get('to_email')
             content = data.get('content')
-            paper_name = data.get('paper_name')
-            from_name = data.get('from_name')
             res = db.comment(from_email, paper_id, content)
-            if res['state'] == 'success':
-                res = db.send_sys_message_to_one('COMMENT', '您的资源:《' + paper_name + '》收到来自用户：'
-                                                 + from_name + '的评论', to_email)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -296,7 +290,7 @@ class DeleteComment(Resource):  # 删除评论
             res = db.delete_comment(comment_id)
             if res['state'] == 'success':
                 res = db.send_sys_message_to_one(to_id, 'DELETECOMMENT', '您的评论："' + content + '"已被删除')
-                return dumps(res, ensure_ascii=False)
+            return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
@@ -338,21 +332,21 @@ class Certification(Resource):  # 申请认证
             res = db.certification(email, name, ID_num, field, text)
             if res['state'] == 'success':
                 res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理')
-                return dumps(res, ensure_ascii=False)
+            return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
 
-# class CommonName(Resource):  # 同名专家申请认证
-#     def get(self):
-#         res = {"state": "fail"}
-#         try:
-#             data = request.args
-#             professor_name = data.get('professor_name')
-#             res = db.common_name(professor_name)
-#             return dumps(res, ensure_ascii=False)
-#         except:
-#             return dumps(res, ensure_ascii=False)
+class CommonName(Resource):  # 同名专家申请认证
+    def get(self):
+        res = {"state": "fail"}
+        try:
+            data = request.args
+            professor_name = data.get('professor_name')
+            res = db.common_name(professor_name)
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
 
 
 class DealCertification(Resource):  # 管理员处理认证
@@ -368,7 +362,7 @@ class DealCertification(Resource):  # 管理员处理认证
                 if not deal:
                     content = res['name'] + ",很抱歉您的申请认证被拒绝"
                 res = db.send_sys_message_to_one('APPLYRESULT', content, res['email'])
-                return dumps(res, ensure_ascii=False)
+            return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
 
@@ -400,7 +394,7 @@ api.add_resource(DeleteComment, "/api/v1/delete_comment", endpoint="delete_comme
 api.add_resource(SendSysMessage, "/api/v1/send_sys_message", endpoint="send_sys_message")
 api.add_resource(GetSysMessage, "/api/v1/get_sys_message", endpoint="get_sys_message")
 api.add_resource(Certification, "/api/v1/certification", endpoint="certification")
-# api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
+api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
 api.add_resource(DealCertification, "/api/v1/deal_certification", endpoint="deal_certification")
 
 if __name__ == "__main__":
