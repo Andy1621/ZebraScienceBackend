@@ -300,7 +300,8 @@ class DbOperate:
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             # 根据标题模糊查询
-            papers = self.getCol('sci_source').find({'name': {'$regex': title}}).skip((page_num - 1) * Config.PAPER_NUM).limit(Config.PAPER_NUM)
+            temp_papers = self.getCol('sci_source').find({'name': {'$regex': title}})
+            papers = temp_papers.skip((page_num - 1) * Config.PAPER_NUM).limit(Config.PAPER_NUM)
             test = self.getCol('sci_source').find_one({'name': {'$regex': title}})
             # 根据标题模糊匹配查找到相关论文列表
             if test:
@@ -313,6 +314,7 @@ class DbOperate:
                     # 之后在这里可能需要对过长的摘要做一些内容上的删减
                     papers_list.append(one_paper)
                 res['msg'] = papers_list
+                res['count'] = temp_papers.count()
                 res['state'] = 'success'
             # 根据标题模糊匹配未查找到相关论文
             else:
@@ -350,7 +352,8 @@ class DbOperate:
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             # 根据名称模糊查询
-            orgs = self.getCol('mechanism').find({'mechanism': {'$regex': organization_name}}).skip((page_num - 1) * Config.ORG_NUM).limit(Config.ORG_NUM)
+            temp_orgs = self.getCol('mechanism').find({'mechanism': {'$regex': organization_name}})
+            orgs = temp_orgs.skip((page_num - 1) * Config.ORG_NUM).limit(Config.ORG_NUM)
             test = self.getCol('mechanism').find_one({'mechanism': {'$regex': organization_name}})
             # 根据名称模糊匹配查找到相关机构列表
             if test:
@@ -362,6 +365,7 @@ class DbOperate:
                     # 之后在这里可能需要对简介部分做一些内容上的删减
                     org_list.append(one_org)
                 res['msg'] = org_list
+                res['count'] = temp_orgs.count()
                 res['state'] = 'success'
             # 根据名称模糊匹配未查找到相关机构
             else:
