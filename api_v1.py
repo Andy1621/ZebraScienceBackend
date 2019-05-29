@@ -256,6 +256,16 @@ class Comment(Resource):  # 评论资源
         res = {"state": "fail"}
         try:
             data = request.args
+            paper_id = data.get('paper_id')
+            res = db.get_comment(paper_id)
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
+
+    def POST(self):
+        res = {"state": "fail"}
+        try:
+            data = request.get_json()
             from_email = data.get('from_email')
             paper_id = data.get('paper_id')
             content = data.get('content')
