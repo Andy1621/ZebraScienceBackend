@@ -569,8 +569,9 @@ class DbOperate:
         state = {'state': 'success', "reasons": ""}
         comment_list = self.client.Business.comment
         papers = self.client.Business.sci_source
-        query_paper_id = {"paper_id": paper_id}
+        query_paper_id = {"paperid": paper_id}
         user_collection = self.client.Business.user
+
         if papers.find_one(query_paper_id) is None:
             state["state"] = "fail"
             state["reasons"] = "paper not found"
@@ -627,7 +628,7 @@ class DbOperate:
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"user_type": {"$ne": "ADMIN"}},
                                                    {"email": 1, "_id": 0, "user_name": 0, "password": 0,
-                                                    "avatar": 0, "user_type": 0, "star_list": 0, "follow_list": 0})
+                                                    "user_type": 0, "star_list": 0, "follow_list": 0})
         if len(user_list) == 0:
             state["state"] = "fail"
         else:
