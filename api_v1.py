@@ -62,10 +62,14 @@ class Search(Resource):  # 登录请求
             if professor_name:  # 通过专家名检索
                 res = db.search_professor(professor_name)
             elif title:  # 通过文章名检索
-                page_num = request.args.get('page_num')
+                page_num = 1
+                if request.args.get('page_num'):
+                    page_num = request.args.get('page_num')
                 res = db.search_paper(title, int(page_num))
             elif organization_name:  # 通过机构名检索
-                page_num = request.args.get('page_num')
+                page_num = 1
+                if request.args.get('page_num'):
+                    page_num = request.args.get('page_num')
                 res = db.search_organization(organization_name, int(page_num))
             # 非法搜索
             return dumps(res, ensure_ascii=False)
