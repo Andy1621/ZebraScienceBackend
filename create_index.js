@@ -98,11 +98,6 @@
 				"analyzer": "optimizeIK",
 				"search_analyzer": "optimizeIK"
 			},
-			"author": {
-				"type": "text",
-				"analyzer": "optimizeIK",
-				"search_analyzer": "optimizeIK"
-			},
 			"keyword": {
 				"type": "text",
 				"analyzer": "optimizeIK",
