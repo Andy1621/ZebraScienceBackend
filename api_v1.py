@@ -264,7 +264,7 @@ class Comment(Resource):  # 评论资源
         except:
             return dumps(res, ensure_ascii=False)
 
-    def POST(self):
+    def post(self):
         res = {"state": "fail"}
         try:
             data = request.get_json()
@@ -342,18 +342,21 @@ class Certification(Resource):  # 申请认证
         res = {"state": "fail"}
         try:
             data = request.args
+            print(data)
             email = data.get('email')
             name = data.get('name')
             ID_num = data.get('ID_num')
             text = data.get('text')
             field = data.get('field')
-            res = db.certification(email, name, ID_num, field, text)
+            scid = data.get('scid')
+            res = db.certification(email, name, ID_num, field, text, scid)
+            print(res)
             if res['state'] == 'success':
-                apply_id = res['_id']
-                res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理',
-                                                   apply_id)
+                res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理')
+                print(res)
             return dumps(res, ensure_ascii=False)
         except:
+            print(2)
             return dumps(res, ensure_ascii=False)
 
 
@@ -386,7 +389,37 @@ class DealCertification(Resource):  # 管理员处理认证
         except:
             return dumps(res, ensure_ascii=False)
 
-        
+
+class DeleteMessage(Resource):  # 删除消息
+    def post(self):
+        res = {"state": "fail"}
+        try:
+            data = request.get_json()
+            user_id = data.get('user_id')
+            message_id = ''
+            message_type = ''
+            if data.get('message_type'):
+                message_type = data.get('message_type')
+                res = db.delete_message_onetype(user_id, message_type)
+            else:
+                message_type = data.get('message_type')
+                res = db.delete_message_onepiece(user_id, message_id)
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
+
+
+class GetApply(Resource):  # 获取认证信息
+    def get(self):
+        res = {"state": "fail"}
+        try:
+            data = request.args
+            apply_id = data.get('apply_id')
+            res = db.get_apply(apply_id)
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
+
 # 添加api资源
 api = Api(app)
 api.add_resource(EmailVerify, "/api/v1/email_code", endpoint="email_code")
@@ -416,6 +449,8 @@ api.add_resource(GetSysMessage, "/api/v1/get_sys_message", endpoint="get_sys_mes
 api.add_resource(Certification, "/api/v1/certification", endpoint="certification")
 api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
 api.add_resource(DealCertification, "/api/v1/deal_certification", endpoint="deal_certification")
+api.add_resource(DeleteMessage, "/api/v1/delete_message", endpoint="delete_message")
+api.add_resource(GetApply, "/api/v1/get_apply", endpoint="get_apply")
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", debug=True)
