@@ -642,9 +642,7 @@ class DbOperate:
     def send_sys_message_to_all(self, msg_type, content):
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
-        user_list = self.client.Business.user.find({"user_type": {"$ne": "ADMIN"}},
-                                                   {"email": 1, "_id": 0, "user_name": 0, "password": 0,
-                                                    "user_type": 0, "star_list": 0, "follow_list": 0})
+        user_list = self.client.Business.user.find({"user_type": {"$ne": "ADMIN"}})
         if len(user_list) == 0:
             state["state"] = "fail"
         else:
@@ -661,10 +659,9 @@ class DbOperate:
     def get_sys_message(self, email):
         state = {'state': 'success', "reasons": "", "messages": []}
         message = self.client.Business.message
-        msg_list = message.find({"email": email}, {"email": 0, "content": 1})
+        msg_list = message.find({"email": email})
         if msg_list.count() > 0:
             for msg in msg_list:
-                print("fuck")
                 state["messages"].append({"content": msg["content"], "date": msg["date"],
                                           "type": msg["type"], "msg_id": str(msg["_id"])})
         return state
@@ -743,9 +740,7 @@ class DbOperate:
     def send_sys_message_to_admin(self, msg_type, content, apply_id=""):
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
-        user_list = self.client.Business.user.find({"user_type": "ADMIN"},
-                                                   {"email": 1, "_id": 0, "user_name": 0, "password": 0,
-                                                    "avatar": 0, "user_type": 0, "star_list": 0, "follow_list": 0})
+        user_list = self.client.Business.user.find({"user_type": "ADMIN"})
         if len(user_list) == 0:
             state["state"] = "fail"
         else:
@@ -762,9 +757,7 @@ class DbOperate:
     def send_sys_message_to_one(self, msg_type, content, email):
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
-        user_list = self.client.Business.user.find({"email": email},
-                                                   {"email": 1, "_id": 0, "user_name": 0, "password": 0,
-                                                    "avatar": 0, "user_type": 0, "star_list": 0, "follow_list": 0})
+        user_list = self.client.Business.user.find({"email": email})
         if len(user_list) == 0:
             state["state"] = "fail"
         else:
