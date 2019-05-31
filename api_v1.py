@@ -171,8 +171,8 @@ class ChangeInfo(Resource):  # 修改用户名
         try:
             data = request.get_json()
             user_id = data.get('user_id')
-            username = None
-            avatar = None
+            username = ''
+            avatar = ''
             if data.get('username'):
                 username = data.get('username')
             if data.get('avatar'):

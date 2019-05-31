@@ -2,10 +2,11 @@ from elasticsearch import Elasticsearch
 from elasticsearch import helpers
 from pymongo import MongoClient
 
-ONCE = 10          # 调用mongo2es中find的数据条数
+ONCE = 1000         # 调用mongo2es中find的数据条数
 SKIPNUM = 0         # 第几次调用mongo2es函数
 ERROR_ELE = []      # 未插入es的数据序号列表
-INSERT_NUM = 1      # 一次批量插入的条数
+INSERT_NUM = 100      # 一次批量插入的条数
+START = 0           # 开始下标
 
 class zebrasearch():
     """
@@ -33,6 +34,9 @@ class zebrasearch():
         for item in tmp:
             item = dict(item)
             item.pop('_id')
+            # for p in item['paper']:
+            #     if '_id' in p.keys():
+            #         p.pop('_id')
             action = {
                 "_index": index,
                 "_type": types,
@@ -68,9 +72,15 @@ if __name__ == '__main__':
     # print(zebrasearch.es.search(index='business', doc_type='scisource'))
     # zebrasearch.cleartypes('busscisource', 'scisource')
 
-    for i in range(0, 756):
+    # 专家每次插10条，每次挑100条
+    # 论文每次插100条，每次挑1000条
+    START = 300
+    SKIPNUM = START
+    END = START + 376
+    for i in range(START, END):
         print("第" + str(i) + "轮")
-        zebrasearch.mongo2es('Business', 'scmessage', 'scholar_index', '_doc')
+        zebrasearch.mongo2es('Business', 'paper', 'paper_index', '_doc')
         SKIPNUM += 1
 
     print(ERROR_ELE)
+
