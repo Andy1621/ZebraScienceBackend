@@ -191,6 +191,8 @@ class ChangePwd(Resource):  # 修改密码
             user_id = data.get('user_id')
             old_password = data.get('old_password')
             new_password = data.get('new_password')
+            old_password = encode(old_password)
+            new_password = encode(new_password)
             res = db.change_pwd(user_id, old_password, new_password)
             return dumps(res, ensure_ascii=False)
         except:
