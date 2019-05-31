@@ -349,7 +349,9 @@ class Certification(Resource):  # 申请认证
             field = data.get('field')
             res = db.certification(email, name, ID_num, field, text)
             if res['state'] == 'success':
-                res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理')
+                apply_id = res['_id']
+                res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理',
+                                                   apply_id)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
