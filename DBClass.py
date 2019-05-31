@@ -1,4 +1,4 @@
-import copy
+﻿import copy
 import re
 import Config
 import random
@@ -182,12 +182,16 @@ class DbOperate:
     '''
     4. 查询专家（不在意专家是否注册）（返回 专家scolarID 专家姓名 机构名称 被引次数 成果数 所属领域） √
     '''
-    def search_professor(self, professor_name):
+    def search_professor(self, professor_name, organization_name=''):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             # 不在意专家是否已注册
-            experts = self.getCol('scmessage').find({'name': professor_name})
-            test = self.getCol('scmessage').find_one({'name': professor_name})
+            if organization_name == '':
+                experts = self.getCol('scmessage').find({'name': professor_name})
+                test = self.getCol('scmessage').find_one({'name': professor_name})
+            else:
+                experts = self.getCol('scmessage').find({'name': professor_name, 'mechanism': professor_name})
+                test = self.getCol('scmessage').find_one({'name': professor_name, 'mechanism': professor_name})
             # 在专家总表中搜索到该姓名专家
             if test:
                 experts_list = []
@@ -366,7 +370,7 @@ class DbOperate:
             return res
 
     '''
-    9-1. 查询机构 √
+    9. 查询机构 √
     '''
     def search_organization(self, org_name, page_num):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
@@ -387,35 +391,6 @@ class DbOperate:
                 res['count'] = temp_orgs.count()
                 res['state'] = 'success'
             # 根据名称模糊匹配未查找到相关机构
-            else:
-                res['reason'] = '未查找到相关机构'
-            return res
-        except:
-            return res
-
-    '''
-    9-2. 机构高级检索
-    '''
-    def search_organization_nb(self, org_name, page_num, keyw_and, keyw_or, keyw_not):
-        res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
-        try:
-            # 根据条件进行高级查询
-            temp_orgs = self.getCol('mechanism').find({'mechanism': {'$regex': org_name}})
-            orgs = temp_orgs.skip((page_num - 1) * Config.ORG_NUM).limit(Config.ORG_NUM)
-            test = self.getCol('mechanism').find_one({'mechanism': {'$regex': org_name}})
-            # 查找到相关机构列表
-            if test:
-                org_list = []
-                # 根据所查到的机构列表orgs，逐个机构提取其中基本信息（去除不必要字段），并放入结果org_list中
-                for one_org in orgs:
-                    one_org.pop('_id')
-                    one_org.pop('url')
-                    # 之后在这里可能需要对简介部分做一些内容上的删减
-                    org_list.append(one_org)
-                res['msg'] = org_list
-                res['count'] = temp_orgs.count()
-                res['state'] = 'success'
-            # 未查找到相关机构
             else:
                 res['reason'] = '未查找到相关机构'
             return res
@@ -687,9 +662,11 @@ class DbOperate:
         state = {'state': 'success', "reasons": "", "messages": []}
         message = self.client.Business.message
         msg_list = message.find({"email": email}, {"email": 0, "content": 1})
-        for msg in msg_list:
-            state["messages"].append({"content": msg["content"], "date": msg["date"],
-                                      "type": msg["type"], "msg_id": str(msg["_id"])})
+        if msg_list.count() > 0:
+            for msg in msg_list:
+                print("fuck")
+                state["messages"].append({"content": msg["content"], "date": msg["date"],
+                                          "type": msg["type"], "msg_id": str(msg["_id"])})
         return state
 
     '''
