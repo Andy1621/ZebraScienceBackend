@@ -342,7 +342,6 @@ class Certification(Resource):  # 申请认证
         res = {"state": "fail"}
         try:
             data = request.args
-            print(data)
             email = data.get('email')
             name = data.get('name')
             ID_num = data.get('ID_num')
@@ -350,13 +349,12 @@ class Certification(Resource):  # 申请认证
             field = data.get('field')
             scid = data.get('scid')
             res = db.certification(email, name, ID_num, field, text, scid)
-            print(res)
+            apply_id = res['_id']
             if res['state'] == 'success':
-                res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理')
-                print(res)
+                res = db.send_sys_message_to_admin('APPLY', '收到来自：' + name + '的认证申请，请及时处理',
+                                                   apply_id)
             return dumps(res, ensure_ascii=False)
         except:
-            print(2)
             return dumps(res, ensure_ascii=False)
 
 
@@ -396,13 +394,11 @@ class DeleteMessage(Resource):  # 删除消息
         try:
             data = request.get_json()
             user_id = data.get('user_id')
-            message_id = ''
-            message_type = ''
             if data.get('message_type'):
                 message_type = data.get('message_type')
                 res = db.delete_message_onetype(user_id, message_type)
-            else:
-                message_type = data.get('message_type')
+            elif data.get('message_id'):
+                message_id = data.get('message_id')
                 res = db.delete_message_onepiece(user_id, message_id)
             return dumps(res, ensure_ascii=False)
         except:
