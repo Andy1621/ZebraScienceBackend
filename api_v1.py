@@ -4,6 +4,8 @@ from utils import send_email, encode
 from DBClass import DbOperate
 from flask_cors import *
 from json import dumps
+import os
+import time
 
 app = Flask(__name__)
 CORS(app, resources=r'/*')
@@ -416,6 +418,23 @@ class GetApply(Resource):  # 获取认证信息
         except:
             return dumps(res, ensure_ascii=False)
 
+
+class UploadAvatar(Resource):  # 上传头像
+    def post(self):
+        res = {"state": "fail"}
+        try:
+            img = request.files.get('img')
+            basedir = os.path.abspath(os.path.dirname(__file__))
+            path = basedir + "/static/photo/"
+            file_name = str(round(time.time())) + '_' + img.filename
+            file_path = path + file_name
+            img.save(file_path)
+            res['state'] = "success"
+            res['url'] = "http://qsz.lkc1621.xyz/static/photo/" + file_name
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
+
 # 添加api资源
 api = Api(app)
 api.add_resource(EmailVerify, "/api/v1/email_code", endpoint="email_code")
@@ -447,6 +466,7 @@ api.add_resource(CommonName, "/api/v1/common_name", endpoint="common_name")
 api.add_resource(DealCertification, "/api/v1/deal_certification", endpoint="deal_certification")
 api.add_resource(DeleteMessage, "/api/v1/delete_message", endpoint="delete_message")
 api.add_resource(GetApply, "/api/v1/get_apply", endpoint="get_apply")
+api.add_resource(UploadAvatar, "/api/v1/upload_avatar", endpoint="upload_avatar")
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", debug=True)
