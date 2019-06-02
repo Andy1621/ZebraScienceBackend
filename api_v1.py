@@ -487,7 +487,7 @@ class SearchProfessorNB(Resource):  # 专家高级检索
 
 
 class ChangeMessageStatus(Resource):
-    def post(self):
+    def get(self):
         res = {"state": "fail"}
         try:
             data = request.args
