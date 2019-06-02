@@ -62,13 +62,16 @@ class Search(Resource):  # 登录请求
         res = {"state": "fail"}
         try:
             if professor_name:  # 通过专家名检索
+                professor_name.strip()
                 res = db.search_professor(professor_name)
             elif title:  # 通过文章名检索
+                title.strip()
                 page_num = 1
                 if request.args.get('page_num'):
                     page_num = request.args.get('page_num')
                 res = db.search_paper(title, int(page_num))
             elif organization_name:  # 通过机构名检索
+                organization_name.strip()
                 page_num = 1
                 if request.args.get('page_num'):
                     page_num = request.args.get('page_num')
@@ -436,6 +439,51 @@ class UploadAvatar(Resource):  # 上传头像
         except:
             return dumps(res, ensure_ascii=False)
 
+
+class SearchPaperNB(Resource):  # 论文高级检索
+    def post(self):
+        res = {"state": "fail"}
+        try:
+            data = request.get_json()
+            title = data.get('title')
+            page_num = 1
+            if data.get('page_num'):
+                page_num = data.get('page_num')
+            keyw_and = data.get('keyw_and')
+            keyw_or = data.get('keyw_or')
+            keyw_not = data.get('keyw_not')
+            author = ''
+            if data.get('author'):
+                author = data.get('author')
+            journal = ''
+            if data.get('journal'):
+                journal = data.get('journal')
+            start_time = ''
+            if data.get('start_time'):
+                start_time = data.get('start_time')
+            end_time = ''
+            if data.get('end_time'):
+                end_time = data.get('end_time')
+            res = db.search_paper_nb(title, page_num, keyw_and, keyw_or, keyw_not,
+                                     author, journal, start_time, end_time)
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
+
+class SearchProfessorNB(Resource):  # 专家高级检索
+    def post(self):
+        res = {"state": "fail"}
+        try:
+            data = request.get_json()
+            professor_name = data.get('professor_name')
+            organization_name = ''
+            if data.get('organization_name'):
+                organization_name = data.get('organization_name')
+            res = db.search_professor_nb(professor_name, organization_name)
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
+
 # 添加api资源
 api = Api(app)
 api.add_resource(EmailVerify, "/api/v1/email_code", endpoint="email_code")
@@ -468,6 +516,8 @@ api.add_resource(DealCertification, "/api/v1/deal_certification", endpoint="deal
 api.add_resource(DeleteMessage, "/api/v1/delete_message", endpoint="delete_message")
 api.add_resource(GetApply, "/api/v1/get_apply", endpoint="get_apply")
 api.add_resource(UploadAvatar, "/api/v1/upload_avatar", endpoint="upload_avatar")
+api.add_resource(SearchPaperNB, "/api/v1/search_paper_nb", endpoint="search_paper_nb")
+api.add_resource(SearchProfessorNB, "/api/v1/search_professor_nb", endpoint="search_professor_nb")
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", debug=True)
