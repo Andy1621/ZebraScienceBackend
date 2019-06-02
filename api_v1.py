@@ -280,10 +280,10 @@ class Comment(Resource):  # 评论资源
 
 
 class ReplyComment(Resource):  # 回复评论
-    def get(self):
+    def post(self):
         res = {"state": "fail"}
         try:
-            data = request.args
+            data = request.get_json()
             from_email = data.get('from_email')
             to_name = data.get('to_name')
             to_email = data.get('to_email')
