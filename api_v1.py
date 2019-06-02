@@ -470,6 +470,7 @@ class SearchPaperNB(Resource):  # 论文高级检索
         except:
             return dumps(res, ensure_ascii=False)
 
+
 class SearchProfessorNB(Resource):  # 专家高级检索
     def post(self):
         res = {"state": "fail"}

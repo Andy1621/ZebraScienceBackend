@@ -878,7 +878,7 @@ class DbOperate:
         msg_list = message.find({"email": email})
         if msg_list.count() > 0:
             for msg in msg_list:
-                if 'apply_id' != "":
+                if 'apply_id' in msg.keys() and 'apply_id' != "":
                     state["messages"].append({"content": msg["content"], "date": msg["date"],
                                               "type": msg["type"], "msg_id": str(msg["_id"]),
                                               "status": msg["status"], "apply_id": msg["apply_id"]})
