@@ -285,15 +285,16 @@ class ReplyComment(Resource):  # 回复评论
         try:
             data = request.args
             from_email = data.get('from_email')
+            to_name = data.get('to_name')
             to_email = data.get('to_email')
-            comment_id = data.get('reply_id')
-            content = data.get('content')
+            comment_id = data.get('comment_id')
             comment = data.get('comment')
+            content = data.get('content')
             from_name = data.get('from_name')
-            res = db.reply_comment(from_email, comment_id, to_email, content, from_name)
+            res = db.reply_comment(from_email, comment_id, to_name, content, from_name)
             if res['state'] == 'success':
-                res = db.send_sys_message_to_one('REPLY', '您发布的评论: "' + comment + '"收到来自用户：'
-                                                 + from_name + '的回复', to_email)
+                res = db.send_sys_message_to_one('REPLY', '您发布的评论: "' + comment + '"收到用户"'
+                                                 + from_name + '"的回复', to_email)
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)

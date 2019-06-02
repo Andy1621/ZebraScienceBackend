@@ -587,7 +587,7 @@ class DbOperate:
         res = {'state': 'yes', 'reason': '用户已收藏该资源'}
         user = self.getCol('user').find_one({'email': email})
         if paper_id not in user['star_list']:
-            res = {'state': 'no', 'reasons': '用户尚未收藏该资源'}
+            res = {'state': 'no', 'reason': '用户尚未收藏该资源'}
         return res
 
     '''
@@ -709,15 +709,15 @@ class DbOperate:
     管理员处理修改科技资源申请，现在手动处理增加资源请求，审查论文url，手动添加数据库内容，管理员请通过后再确认同意增加
     '''
     def deal_request(self, apply_id, deal):
-        state = {'state': 'success', "reasons": "", "name": "", "email": ""}
+        state = {'state': 'success', "reason": "", "name": "", "email": ""}
         resource_application = self.client.Business.resource_application
         apply = resource_application.find_one({"_id": ObjectId(apply_id)})
         if apply is None:
             state["state"] = "fail"
-            state["reasons"] = "apply not found"
+            state["reason"] = "apply not found"
         elif apply["state"] is not "waiting":
             state["state"] = "fail"
-            state["reasons"] = "apply is already dealt with"
+            state["reason"] = "apply is already dealt with"
         else:
             if deal:
                 apply["state"] = "accepted"
@@ -735,21 +735,21 @@ class DbOperate:
 
 #######################################################接口 19-26#######################################################
     '''
-    The 19th Method
+    The 19th Method √
     评论资源
     '''
     def comment(self, email, paper_id, content):
-        state = {'state': 'success', "reasons": ""}
+        state = {'state': 'success', "reason": ""}
         comment_list = self.client.Business.comment
         papers = self.client.Business.sci_source
         query_paper_id = {"paperid": paper_id}
         user_collection = self.client.Business.user
         if papers.find_one(query_paper_id) is None:
             state["state"] = "fail"
-            state["reasons"] = "paper not found"
+            state["reason"] = "paper not found"
         elif user_collection.find_one({"email": email}) is None:
             state["state"] = "fail"
-            state["reasons"] = "user not found"
+            state["reason"] = "user not found"
         else:
             this_comment = {"email": email, "paper_id": paper_id,
                             "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
@@ -761,34 +761,30 @@ class DbOperate:
     The 20th Method
     回复评论
     '''
-    def reply_comment(self, from_email, comment_id, to_email, content, from_name):
-        state = {'state': 'success', "reasons": ""}
+    def reply_comment(self, from_email, comment_id, to_name, content, from_name):
+        state = {'state': 'success', "reason": ""}
         comment_list = self.client.Business.comment
-        user_collection = self.client.Business.user
         new_comment = comment_list.find_one({"_id": ObjectId(comment_id)})
         if new_comment is None:
             state["state"] = "fail"
-            state["reasons"] = "comment not found"
-        elif user_collection.find_one({"email": to_email}) is None:
-            state["state"] = "fail"
-            state["reasons"] = "user not found"
+            state["reason"] = "comment not found"
         else:
-            new_comment["replies"].append({"from_email": from_email, "to_email": to_email,
+            new_comment["replies"].append({"from_email": from_email, "to_name": to_name,
                                            "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
                                            "content": content, "from_name": from_name})
             comment_list.update({"_id": ObjectId(comment_id)}, new_comment)
         return state
 
     '''
-    The 21st Method
+    The 21st Method √
     删除评论
     '''
     def delete_comment(self, comment_id):
-        state = {'state': 'success', "reasons": ""}
+        state = {'state': 'success', "reason": ""}
         comment_list = self.client.Business.comment
         if comment_list.find_one({"_id": ObjectId(comment_id)}) is None:
             state["state"] = "fail"
-            state["reasons"] = "comment not found"
+            state["reason"] = "comment not found"
         else:
             comment_list.remove({"_id": ObjectId(comment_id)})
         return state
@@ -798,16 +794,17 @@ class DbOperate:
     发送系统通知（除管理员）
     '''
     def send_sys_message_to_all(self, msg_type, content):
-        state = {'state': 'success', "reasons": ""}
+        state = {'state': 'success', "reason": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"user_type": {"$ne": "ADMIN"}})
-        if len(user_list) == 0:
+        if user_list.count() == 0:
             state["state"] = "fail"
+            state["reason"] = "获取非管理员用户信息失败"
         else:
             for user in user_list:
                 msg.insert_one({"content": content, "email": user["email"],
                                 "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
-                                "type": msg_type})
+                                "type": msg_type, "status": "No"})
         return state
 
     '''
@@ -815,18 +812,21 @@ class DbOperate:
     获取通知
     '''
     def get_sys_message(self, email):
-        state = {'state': 'success', "reasons": "", "messages": []}
+        state = {'state': 'success', "reason": "", "messages": []}
         message = self.client.Business.message
         msg_list = message.find({"email": email})
         if msg_list.count() > 0:
             for msg in msg_list:
-                if 'apply_id' in msg.keys():
+                if 'apply_id' != "":
                     state["messages"].append({"content": msg["content"], "date": msg["date"],
                                               "type": msg["type"], "msg_id": str(msg["_id"]),
-                                              "apply_id": msg["apply_id"]})
+                                              "status": msg["status"], "apply_id": msg["apply_id"]})
                 else:
                     state["messages"].append({"content": msg["content"], "date": msg["date"],
-                                              "type": msg["type"], "msg_id": str(msg["_id"])})
+                                              "type": msg["type"], "status": msg["status"], "msg_id": str(msg["_id"])})
+        else:
+            state["state"] = "fail"
+            state["reason"] = "消息列表为空"
         return state
 
     '''
@@ -834,7 +834,7 @@ class DbOperate:
     申请认证（实际是插入申请认证表）
     '''
     def certification(self, email, name, id_, field, text, scid):
-        state = {'state': 'success', "reasons": "", "_id": ""}
+        state = {'state': 'success', "reason": "", "_id": ""}
         applies = self.client.Business.application
         expert_list = self.client.Business.user.find({"user_type": "EXPERT", "email": email})
         if expert_list.count() > 0:
@@ -857,10 +857,11 @@ class DbOperate:
     同名专家
     '''
     def common_name(self, professor_name):
-        state = {'state': 'success', "reasons": "", "user_ids": []}
+        state = {'state': 'success', "reason": "", "user_ids": []}
         expert_list = self.client.Business.user.find({"user_type": "EXPERT", "username": professor_name})
         if expert_list.count() == 0:
             state["state"] = "fail"
+            state["reason"] = "获取专家列表失败"
         else:
             for expert in expert_list:
                 state["user_ids"].append(expert["email"])
@@ -871,29 +872,32 @@ class DbOperate:
     管理员处理认证 deal为bool变量
     '''
     def deal_certification(self, apply_id, deal):
-        state = {'state': 'success', "reasons": "", "name": "", "email": ""}
+        state = {'state': 'success', "reason": "", "name": "", "email": ""}
         applies = self.client.Business.application
         apply = applies.find_one({"_id": ObjectId(apply_id)})
         if apply is None:
             state["state"] = "fail"
-            state["reasons"] = "apply not found"
-        elif apply["state"] is not "waiting":
+            state["reason"] = "apply not found"
+        elif apply["state"] != "waiting":
             state["state"] = "fail"
-            state["reasons"] = "apply is already dealt with"
+            state["reason"] = "apply is already dealt with"
         else:
             if deal:
-                apply["state"] = "accepted"
-                result = self.client.Business.user.update_many({"email": apply["email"], "user_type": "USER"},
-                                                               {"user_type": "EXPERT",
-                                                                "username": apply["name"],
-                                                                "scid": apply["scid"]})
+                applies.update_one({"_id": ObjectId(apply_id)},
+                                   {"$set": {"state": "accepted"}})
+                result = self.client.Business.user.update_one({"email": apply["email"], "user_type": "USER"},
+                                                              {"$set": {"user_type": "EXPERT",
+                                                                        "username": apply["name"],
+                                                                        "scid": apply["scid"]}})
                 if result.matched_count == 0:
                     state["state"] = "fail"
                     state["reason"] = "but nothing changed"
-                state["name"] = apply["name"]
-                state["email"] = apply["email"]
+                else:
+                    state["name"] = apply["name"]
+                    state["email"] = apply["email"]
             else:
-                apply["state"] = "refused"
+                applies.update_one({"_id": ObjectId(apply_id)},
+                                   {"$set": {"state": "refused"}})
         return state
 
     '''
@@ -901,16 +905,17 @@ class DbOperate:
     发送系统通知（仅管理员）
     '''
     def send_sys_message_to_admin(self, msg_type, content, apply_id=""):
-        state = {'state': 'success', "reasons": ""}
+        state = {'state': 'success', "reason": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"user_type": "ADMIN"})
         if user_list.count() == 0:
             state["state"] = "fail"
+            state["reason"] = "获取管理员信息失败"
         else:
             for user in user_list:
                 msg.insert_one({"content": content, "email": user["email"],
                                 "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
-                                "type": msg_type, "apply_id": apply_id})
+                                "type": msg_type, "status": "No", "apply_id": apply_id})
         return state
 
     '''
@@ -918,16 +923,17 @@ class DbOperate:
     发送系统通知（单人）
     '''
     def send_sys_message_to_one(self, msg_type, content, email):
-        state = {'state': 'success', "reasons": ""}
+        state = {'state': 'success', "reason": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"email": email})
         if user_list.count() == 0:
             state["state"] = "fail"
+            state["reason"] = "未获取到用户信息"
         else:
             for user in user_list:
                 msg.insert_one({"content": content, "email": user["email"],
                                 "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
-                                "type": msg_type})
+                                "type": msg_type, "status": "No"})
         return state
 
     '''
@@ -971,11 +977,11 @@ class DbOperate:
     30-1. 删除一条消息 √
     '''
     def delete_message_onepiece(self, user_id, message_id):
-        state = {'state': 'success', "reasons": ""}
+        state = {'state': 'success', "reason": ""}
         msg_list = self.client.Business.message
         if msg_list.find_one({"_id": ObjectId(message_id)}) is None:
             state["state"] = "fail"
-            state["reasons"] = "message not found"
+            state["reason"] = "message not found"
         else:
             msg_list.remove({"_id": ObjectId(message_id)})
         return state
@@ -984,17 +990,17 @@ class DbOperate:
     30-2. 删除同种消息 √
     '''
     def delete_message_onetype(self, user_id, message_type):
-        state = {'state': 'success', "reasons": ""}
+        state = {'state': 'success', "reason": ""}
         msg_list = self.client.Business.message
         if msg_list.find_one({"email": user_id, "type": message_type}) is None:
             state["state"] = "fail"
-            state["reasons"] = "message not found"
+            state["reason"] = "message not found"
         else:
             msg_list.remove({"email": user_id, "type": message_type})
         return state
 
     '''
-    31. 获取认证信息
+    31. 获取认证信息 √
     '''
     def get_apply(self, apply_id):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
