@@ -485,6 +485,18 @@ class SearchProfessorNB(Resource):  # 专家高级检索
         except:
             return dumps(res, ensure_ascii=False)
 
+
+class ChangeMessageStatus(Resource):
+    def post(self):
+        res = {"state": "fail"}
+        try:
+            data = request.args
+            msg_id = data.get('msg_id')
+            res = db.change_message_status(msg_id)
+            return dumps(res, ensure_ascii=False)
+        except:
+            return dumps(res, ensure_ascii=False)
+
 # 添加api资源
 api = Api(app)
 api.add_resource(EmailVerify, "/api/v1/email_code", endpoint="email_code")
@@ -519,6 +531,7 @@ api.add_resource(GetApply, "/api/v1/get_apply", endpoint="get_apply")
 api.add_resource(UploadAvatar, "/api/v1/upload_avatar", endpoint="upload_avatar")
 api.add_resource(SearchPaperNB, "/api/v1/search_paper_nb", endpoint="search_paper_nb")
 api.add_resource(SearchProfessorNB, "/api/v1/search_professor_nb", endpoint="search_professor_nb")
+api.add_resource(ChangeMessageStatus, "/api/v1/change_message_status", endpoint="change_message_status")
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", debug=True)

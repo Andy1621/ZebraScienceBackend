@@ -897,13 +897,13 @@ class DbOperate:
     def certification(self, email, name, id_, field, text, scid):
         state = {'state': 'success', "reason": "", "_id": ""}
         applies = self.client.Business.application
-        expert_list = self.client.Business.user.find({"user_type": "EXPERT", "email": email})
-        if expert_list.count() > 0:
+        expert_list = self.client.Business.user.find_one({"user_type": "EXPERT", "email": email})
+        if expert_list:
             state["state"] = "fail"
             state["reason"] = "该邮箱已被其他专家认证"
         else:
-            app_list = applies.find({"email": email})
-            if app_list.count() > 0:
+            app_list = applies.find_one({"email": email, "state": "waiting"})
+            if app_list:
                 state["state"] = "fail"
                 state["reason"] = "您已提交申请，请勿重复提交"
             else:
@@ -915,18 +915,37 @@ class DbOperate:
 
     '''
     The 25th Method
-    同名专家
+    同名专家（未注册专家）
     '''
     def common_name(self, professor_name):
-        state = {'state': 'success', "reason": "", "user_ids": []}
-        expert_list = self.client.Business.user.find({"user_type": "EXPERT", "username": professor_name})
-        if expert_list.count() == 0:
-            state["state"] = "fail"
-            state["reason"] = "获取专家列表失败"
-        else:
-            for expert in expert_list:
-                state["user_ids"].append(expert["email"])
-        return state
+        res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
+        try:
+            # 获取全部同名专家列表
+            big_result = self.search_professor(professor_name)
+            if big_result['state'] == 'success':
+                exp_detail = self.getCol('scmessage')
+                # 已注册专家列表
+                reg_exp = self.getCol('user').find({'user_type': 'EXPERT', 'username': professor_name})
+                # 待修改的未注册专家列表（现在为全部同名专家列表）
+                noreg_exp = copy.deepcopy(big_result['msg'])
+                # 全部同名专家列表 - 已注册专家列表
+                for exp in reg_exp:
+                    one_exp = exp_detail.find_one({'scid': exp['scid']})
+                    tmp = {}
+                    tmp['scid'] = one_exp['scid']
+                    tmp['name'] = one_exp['name']
+                    tmp['mechanism'] = one_exp['mechanism']
+                    tmp['citedtimes'] = one_exp['citedtimes']
+                    tmp['resultsnumber'] = one_exp['resultsnumber']
+                    tmp['field'] = one_exp['field']
+                    noreg_exp.remove(tmp)
+                res['msg'] = noreg_exp
+                res['state'] = 'success'
+            else:
+                res['reason'] = big_result['reason']
+            return res
+        except:
+            return res
 
     '''
     The 26th Method
@@ -936,6 +955,10 @@ class DbOperate:
         state = {'state': 'success', "reason": "", "name": "", "email": ""}
         applies = self.client.Business.application
         apply = applies.find_one({"_id": ObjectId(apply_id)})
+        if deal == "false":
+            deal = False
+        else:
+            deal = True
         if apply is None:
             state["state"] = "fail"
             state["reason"] = "apply not found"
@@ -957,6 +980,8 @@ class DbOperate:
                     state["name"] = apply["name"]
                     state["email"] = apply["email"]
             else:
+                state["name"] = apply["name"]
+                state["email"] = apply["email"]
                 applies.update_one({"_id": ObjectId(apply_id)},
                                    {"$set": {"state": "refused"}})
         return state
@@ -1075,6 +1100,26 @@ class DbOperate:
             # 未搜索到认证材料
             else:
                 res['reason'] = '未搜索到认证材料'
+            return res
+        except:
+            return res
+
+    '''
+    32. 修改消息已读状态
+    '''
+    def change_message_status(self, msg_id):
+        res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
+        try:
+            msg_list = self.getCol('message')
+            find_msg = msg_list.find_one({'_id': ObjectId(msg_id)})
+            # 成功搜索到该条消息
+            if find_msg:
+                msg_list.update_one({"_id": ObjectId(msg_id)},
+                                    {"$set": {"status": "Yes"}})
+                res['state'] = 'success'
+            # 未搜索到该条消息
+            else:
+                res['reason'] = '该消息不存在'
             return res
         except:
             return res
