@@ -290,7 +290,7 @@ class ReplyComment(Resource):  # 回复评论
             content = data.get('content')
             comment = data.get('comment')
             from_name = data.get('from_name')
-            res = db.reply_comment(comment_id, from_email, content)
+            res = db.reply_comment(from_email, comment_id, to_email, content, from_name)
             if res['state'] == 'success':
                 res = db.send_sys_message_to_one('REPLY', '您发布的评论: "' + comment + '"收到来自用户：'
                                                  + from_name + '的回复', to_email)
