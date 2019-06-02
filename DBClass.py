@@ -3,6 +3,7 @@ import re
 import Config
 import random
 import time
+import json
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from elasticsearch import Elasticsearch
@@ -81,6 +82,19 @@ class DbOperate:
         # 设置返回值
         res['state'] = 'success'
         res['msg'] = find_user
+
+    def LCS(self, input_x, input_y):
+        # input_y as column, input_x as row
+        dp = [([0] * (len(input_y) + 1)) for i in range(len(input_x) + 1)]
+        for i in range(1, len(input_x) + 1):
+            for j in range(1, len(input_y) + 1):
+                if i == 0 or j == 0:  # 在边界上，自行+1
+                    dp[i][j] = 1
+                elif input_x[i - 1] == input_y[j - 1]:  # 不在边界上，相等就加一
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                else:  # 不相等
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+        return dp[-1][-1]
 
     '''
     1. 邮箱查重 验证码生成并存入数据库 √
@@ -342,29 +356,173 @@ class DbOperate:
     '''
     8-3. 论文高级检索
     '''
-    def search_paper_nb(self, title, page_num, keyw_and, keyw_or, keyw_not):
-        res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
+    def search_paper_nb(self, title, page_num, keyw_and, keyw_or, keyw_not, author, journal, start_time, end_time ):
+        res = {'state': 'fail', 'reason': '网络出错或BUG出现！', 'count': 0, 'msg': []}
         try:
             # 根据条件进行高级查询
-            temp_papers = self.getCol('sci_source').find({'name': {'$regex': title}})
-            papers = temp_papers.skip((page_num - 1) * Config.PAPER_NUM).limit(Config.PAPER_NUM)
-            test = self.getCol('sci_source').find_one({'name': {'$regex': title}})
-            # 查找到相关论文列表
-            if test:
-                papers_list = []
-                # 根据所查到的论文列表papers，逐个论文提取其中基本信息（去除不必要字段），并放入结果papers_list中
-                for one_paper in papers:
-                    one_paper.pop('_id')
-                    one_paper.pop('source_url')
-                    one_paper.pop('free_download_url')
-                    # 之后在这里可能需要对过长的摘要做一些内容上的删减
-                    papers_list.append(one_paper)
-                res['msg'] = papers_list
-                res['count'] = temp_papers.count()
+            must_match = ''
+            for key in keyw_and:
+                must_match += key+' '
+            must_not_match = ''
+            for key in keyw_not:
+                must_not_match += key+' '
+            should_match = ''
+            for key in keyw_or:
+                should_match += key+' '
+            try:
+                start_time = int(start_time)
+            except:
+                start_time = 0
+            try:
+                end_time = int(end_time)
+            except:
+                end_time = 2020
+            filter_query = {
+                "range": {
+                    "year": {
+                        "gte": start_time,
+                        "lte": end_time
+                    }
+                }
+            }
+            must_query = [
+                {
+                    "match": {
+                        "name": title
+                    }
+                },
+            ]
+            if author != '':
+                must_query.append(
+                    {"match": {"author": author}}
+                )
+            if journal != '':
+                must_query.append(
+                    {"match": {"source_journal.name": journal}}
+                )
+            must_not_query = {
+                "multi_match":{
+                    "query": must_not_match,
+                    "fields": [
+                        "abstract",
+                        "name",
+                        "author",
+                        "keyword"
+                    ],
+                    "operator": "and"
+                }
+            }
+            should_query = [
+                {
+                    "multi_match":{
+                        "query": should_match,
+                        "fields": [
+                            "abstract",
+                            "name",
+                            "author",
+                            "keyword"
+                        ]
+                    }
+                },
+                {
+                    "match": {
+                        "name":{
+                            "query": must_match,
+                            "operator": "and"
+                        }
+                    }
+                },
+                {
+                    "match": {
+                        "author": {
+                            "query": must_match,
+                            "operator": "and"
+                        }
+                    }
+                },
+                {
+                    "match": {
+                        "abstract":{
+                            "query": must_match,
+                            "operator": "and"
+                        }
+                    }
+                },
+                {
+                    "match": {
+                        "keyword": {
+                            "query": must_match,
+                            "operator": "and"
+                        }
+                    }
+                }
+            ]
+            body = {
+                "query": {
+                    "bool":{
+                       "filter": filter_query,
+                        "must": must_query,
+                        "must_not": must_not_query,
+                        "should": should_query
+                    }
+                },
+                "highlight": {
+                    "pre_tags" : ['<span style="font-color: red">'],
+                    "post_tags": ['</span>'],
+                    "fields": {
+                        "message": {
+                            "fragment_size": 150,
+                            "number_of_fragments": 0
+                        },
+                        "abstract": {},
+                        "name":{},
+                        "keyword":{},
+                        "author":{},
+                        "source_journal.name":{},
+                        "year":{}
+                    }
+                }
+            }
+            body = json.dumps(body, ensure_ascii=False)
+            print(body)
+            temp_papers = self.es.search(index='paper_index',body=body)
+            count = len(temp_papers['hits']['hits'])
+            print(count)
+            papers = []
+            for temp in temp_papers['hits']['hits']:
+                source = temp['_source']
+                highlight = temp['highlight']
+                if 'source_journal.name' in highlight.keys():
+                    source['source_journal']['name'] = highlight['source_journal.name'][0]
+                if 'year' in highlight.keys():
+                    source['year'] = highlight['year']
+                if 'author' in highlight.keys():
+                    for i in range(len(source['author'])):
+                        for h_author in highlight['author']:
+                            if len(source['author'][i]) == self.LCS(source['author'][i], h_author):
+                                source['author'][i] = h_author
+                if 'name' in highlight.keys():
+                    source['name'] = highlight['name']
+                if 'abstract' in highlight.keys():
+                    abstract = ''
+                    for item in highlight['abstract']:
+                        abstract += item
+                    source['abstract'] = abstract
+                if 'keyword' in highlight.keys():
+                    for i in range(len(source['keyword'])):
+                        for kw in highlight['keyword']:
+                            if len(source['keyword'][i]) == self.LCS(source['keyword'][i],kw):
+                                source['keyword'][i] = kw
+                print(json.dumps(source,ensure_ascii=False,indent=4))
+                papers.append(source)
+            if count>0:
+                res['count'] = count
+                res['msg'] = papers[(page_num-1)*10 : page_num*10]
                 res['state'] = 'success'
-            # 未查找到相关论文
+                res['reason'] = '成功查询'
             else:
-                res['reason'] = '未查找到相关论文'
+                res['reason'] = '未找到相关论文'
+            print(res)
             return res
         except:
             return res
@@ -664,8 +822,6 @@ class DbOperate:
             for msg in msg_list:
                 msg['msg_id'] = msg.pop('_id')
                 state["messages"].append(msg)
-                # state["messages"].append({"content": msg["content"], "date": msg["date"],
-                #                           "type": msg["type"], "msg_id": str(msg["_id"])})
         return state
 
     '''
