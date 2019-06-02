@@ -837,14 +837,14 @@ class DbOperate:
         state = {'state': 'success', "reasons": "", "_id": ""}
         applies = self.client.Business.application
         expert_list = self.client.Business.user.find({"user_type": "EXPERT", "email": email})
-        if len(expert_list) > 0:
+        if expert_list.count() > 0:
             state["state"] = "fail"
             state["reason"] = "该邮箱已被其他专家认证"
         else:
             app_list = applies.find({"email": email})
-            if len(app_list) > 0:
+            if app_list.count() > 0:
                 state["state"] = "fail"
-                state["state"] = "您已提交申请，请勿重复提交"
+                state["reason"] = "您已提交申请，请勿重复提交"
             else:
                 result = applies.insert_one({"name": name, "ID": id_, "field": field, "email": email, "text": text,
                                              "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
@@ -859,7 +859,7 @@ class DbOperate:
     def common_name(self, professor_name):
         state = {'state': 'success', "reasons": "", "user_ids": []}
         expert_list = self.client.Business.user.find({"user_type": "EXPERT", "username": professor_name})
-        if len(expert_list) == 0:
+        if expert_list.count() == 0:
             state["state"] = "fail"
         else:
             for expert in expert_list:
@@ -904,7 +904,7 @@ class DbOperate:
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"user_type": "ADMIN"})
-        if len(user_list) == 0:
+        if user_list.count() == 0:
             state["state"] = "fail"
         else:
             for user in user_list:
@@ -921,7 +921,7 @@ class DbOperate:
         state = {'state': 'success', "reasons": ""}
         msg = self.client.Business.message
         user_list = self.client.Business.user.find({"email": email})
-        if len(user_list) == 0:
+        if user_list.count() == 0:
             state["state"] = "fail"
         else:
             for user in user_list:
