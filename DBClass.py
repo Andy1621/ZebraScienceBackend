@@ -194,18 +194,14 @@ class DbOperate:
             return res
 
     '''
-    4. 查询专家（不在意专家是否注册）（返回 专家scolarID 专家姓名 机构名称 被引次数 成果数 所属领域） √
+    4-1. 查询专家（不在意专家是否注册）（返回 专家scolarID 专家姓名 机构名称 被引次数 成果数 所属领域） √
     '''
-    def search_professor(self, professor_name, organization_name=''):
+    def search_professor(self, professor_name):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             # 不在意专家是否已注册
-            if organization_name == '':
-                experts = self.getCol('scmessage').find({'name': professor_name})
-                test = self.getCol('scmessage').find_one({'name': professor_name})
-            else:
-                experts = self.getCol('scmessage').find({'name': professor_name, 'mechanism': professor_name})
-                test = self.getCol('scmessage').find_one({'name': professor_name, 'mechanism': professor_name})
+            experts = self.getCol('scmessage').find({'name': professor_name})
+            test = self.getCol('scmessage').find_one({'name': professor_name})
             # 在专家总表中搜索到该姓名专家
             if test:
                 experts_list = []
@@ -226,6 +222,70 @@ class DbOperate:
                 res['reason'] = '未搜索到该专家'
             return res
         except:
+            return res
+
+    '''
+    4-2 高级搜索，匹配专家名和机构名
+    '''
+    def search_professor_nb(self, professor_name, organization_name):
+        res = {'state': 'fail', 'reason': '网络出错或BUG出现！', 'msg': []}
+        try:
+            body ={
+                    "query": {
+                    "bool": {
+                        "must" : [
+                            {"match": {"name": professor_name}},
+                            {"match": {"mechanism": organization_name}}
+                        ]
+                    }
+                },
+                "highlight": {
+                    "pre_tags" : ['<span style="font-color: red">'],
+                    "post_tags": ['</span>'],
+                    "fields": {
+                        "message": {
+                            "fragment_size": 150,
+                            "number_of_fragments": 0
+                        },
+                        "name": {},
+                        "mechanism":{}
+                    }
+                }
+            }
+            body = json.dumps(body, ensure_ascii=False)
+            print(body)
+            temp_scholars = self.es.search(index='scholar_index', body=body)
+            count = len(temp_scholars['hits']['hits'])
+            print(count)
+            scholars = []
+            for temp in temp_scholars['hits']['hits']:
+                source = temp['_source']
+                highlight = temp['highlight']
+                if 'name' in highlight.keys():
+                    source['name'] = highlight['name']
+                if 'mechanism' in highlight.keys():
+                    source['mechanism'] = highlight['mechanism']
+
+                tmp = {}
+                tmp['scid'] = source['scid']
+                tmp['name'] = source['name']
+                tmp['mechanism'] = source['mechanism']
+                tmp['citedtimes'] = source['citedtimes']
+                tmp['resultsnumber'] = source['resultsnumber']
+                tmp['field'] = source['field']
+
+                print(json.dumps(tmp, ensure_ascii=False, indent=4))
+                scholars.append(tmp)
+            if count > 0:
+                res['msg'] = scholars
+                res['state'] = 'success'
+                res['reason'] = '成功查询'
+            else:
+                res['reason'] = '未找到相关论文'
+            print(res)
+            return res
+        except:
+            res['reason'] = '未搜索到该专家'
             return res
 
     '''
@@ -349,6 +409,7 @@ class DbOperate:
             # 未搜索到该论文
             else:
                 res['reason'] = '未搜索到该论文'
+            print(res)
             return res
         except:
             return res
