@@ -240,7 +240,7 @@ class DbOperate:
                     }
                 },
                 "highlight": {
-                    "pre_tags" : ['<span style="font-color: red">'],
+                    "pre_tags" : ['<span style="color: red">'],
                     "post_tags": ['</span>'],
                     "fields": {
                         "message": {
@@ -250,7 +250,8 @@ class DbOperate:
                         "name": {},
                         "mechanism":{}
                     }
-                }
+                },
+                "size":10
             }
             body = json.dumps(body, ensure_ascii=False)
             print(body)
@@ -262,9 +263,9 @@ class DbOperate:
                 source = temp['_source']
                 highlight = temp['highlight']
                 if 'name' in highlight.keys():
-                    source['name'] = highlight['name']
+                    source['name'] = highlight['name'][0]
                 if 'mechanism' in highlight.keys():
-                    source['mechanism'] = highlight['mechanism']
+                    source['mechanism'] = highlight['mechanism'][0]
 
                 tmp = {}
                 tmp['scid'] = source['scid']
@@ -282,7 +283,7 @@ class DbOperate:
                 res['reason'] = '成功查询'
             else:
                 res['reason'] = '未找到相关论文'
-            print(res)
+            print(json.dumps(res, ensure_ascii=False, indent=4))
             return res
         except:
             res['reason'] = '未搜索到该专家'
@@ -418,7 +419,8 @@ class DbOperate:
     8-3. 论文高级检索
     '''
     def search_paper_nb(self, title, page_num, keyw_and, keyw_or, keyw_not, author, journal, start_time, end_time ):
-        res = {'state': 'fail', 'reason': '网络出错或BUG出现！', 'count': 0, 'msg': []}
+        res = {'state': 'fail', 'reason': '网络出错或BUG出现！', 'count': 0,
+               'total_count': 0, 'msg': []}
         try:
             # 根据条件进行高级查询
             must_match = ''
@@ -528,27 +530,55 @@ class DbOperate:
                     }
                 },
                 "highlight": {
-                    "pre_tags" : ['<span style="font-color: red">'],
+                    "pre_tags" : ['<span style="color: red">'],
                     "post_tags": ['</span>'],
                     "fields": {
-                        "message": {
-                            "fragment_size": 150,
-                            "number_of_fragments": 0
+                        "abstract": {
+                                "fragment_size": 150,
+                                "number_of_fragments": 0
                         },
-                        "abstract": {},
-                        "name":{},
-                        "keyword":{},
-                        "author":{},
-                        "source_journal.name":{},
+                        "name":{
+                                "fragment_size": 150,
+                                "number_of_fragments": 0
+                        },
+                        "keyword":{
+                                "fragment_size": 150,
+                                "number_of_fragments": 0
+                        },
+                        "author":{
+                                "fragment_size": 150,
+                                "number_of_fragments": 0
+                        },
+                        "source_journal.name":{
+                                "fragment_size": 150,
+                                "number_of_fragments": 0
+                        },
                         "year":{}
                     }
-                }
+                },
+                'size': 10,
             }
+            total_count = 0
+            if page_num == '':
+                temp_body = {
+                    "query": {
+                        "bool": {
+                            "filter": filter_query,
+                            "must": must_query,
+                            "must_not": must_not_query,
+                            "should": should_query
+                        }
+                    }
+                }
+                temp_body = json.dumps(temp_body, ensure_ascii=False)
+                temp_res = self.es.count(index='paper_index', body=temp_body)
+                total_count = temp_res['count']
+                print(total_count)
+                page_num = 1
+            body['from'] = (page_num - 1) * 10
             body = json.dumps(body, ensure_ascii=False)
-            print(body)
-            temp_papers = self.es.search(index='paper_index',body=body)
+            temp_papers = self.es.search(index='paper_index', body=body)
             count = len(temp_papers['hits']['hits'])
-            print(count)
             papers = []
             for temp in temp_papers['hits']['hits']:
                 source = temp['_source']
@@ -556,14 +586,14 @@ class DbOperate:
                 if 'source_journal.name' in highlight.keys():
                     source['source_journal']['name'] = highlight['source_journal.name'][0]
                 if 'year' in highlight.keys():
-                    source['year'] = highlight['year']
+                    source['year'] = highlight['year'][0]
                 if 'author' in highlight.keys():
                     for i in range(len(source['author'])):
                         for h_author in highlight['author']:
                             if len(source['author'][i]) == self.LCS(source['author'][i], h_author):
                                 source['author'][i] = h_author
                 if 'name' in highlight.keys():
-                    source['name'] = highlight['name']
+                    source['name'] = highlight['name'][0]
                 if 'abstract' in highlight.keys():
                     abstract = ''
                     for item in highlight['abstract']:
@@ -574,16 +604,15 @@ class DbOperate:
                         for kw in highlight['keyword']:
                             if len(source['keyword'][i]) == self.LCS(source['keyword'][i],kw):
                                 source['keyword'][i] = kw
-                print(json.dumps(source,ensure_ascii=False,indent=4))
                 papers.append(source)
-            if count>0:
+            res['total_count'] = total_count
+            if count > 0:
                 res['count'] = count
-                res['msg'] = papers[(page_num-1)*10 : page_num*10]
+                res['msg'] = papers
                 res['state'] = 'success'
                 res['reason'] = '成功查询'
             else:
                 res['reason'] = '未找到相关论文'
-            print(res)
             return res
         except:
             return res

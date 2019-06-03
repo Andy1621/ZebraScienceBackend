@@ -446,7 +446,7 @@ class SearchPaperNB(Resource):  # 论文高级检索
         try:
             data = request.get_json()
             title = data.get('title')
-            page_num = 1
+            page_num = ''
             if data.get('page_num'):
                 page_num = data.get('page_num')
             keyw_and = []
@@ -482,11 +482,14 @@ class SearchProfessorNB(Resource):  # 专家高级检索
         res = {"state": "fail"}
         try:
             data = request.get_json()
+            print("fuck")
             professor_name = data.get('professor_name')
             organization_name = ''
             if data.get('organization_name'):
                 organization_name = data.get('organization_name')
+            print("fuck2")
             res = db.search_professor_nb(professor_name, organization_name)
+            print("fuck3")
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
