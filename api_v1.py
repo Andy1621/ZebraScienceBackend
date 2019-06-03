@@ -449,9 +449,15 @@ class SearchPaperNB(Resource):  # 论文高级检索
             page_num = 1
             if data.get('page_num'):
                 page_num = data.get('page_num')
-            keyw_and = data.get('keyw_and')
-            keyw_or = data.get('keyw_or')
-            keyw_not = data.get('keyw_not')
+            keyw_and = []
+            if data.get('keyw_and'):
+                keyw_and = data.get('keyw_and')
+            keyw_or = []
+            if data.get('keyw_or'):
+                keyw_or = data.get('keyw_or')
+            keyw_not = []
+            if data.get('keyw_not'):
+                keyw_not = data.get('keyw_not')
             author = ''
             if data.get('author'):
                 author = data.get('author')
