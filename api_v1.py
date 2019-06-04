@@ -6,11 +6,11 @@ from flask_cors import *
 from json import dumps
 import os
 import time
+import Config
 
 app = Flask(__name__)
 CORS(app, resources=r'/*')
 db = DbOperate()
-
 
 class EmailVerify(Resource):  # 邮箱绑定请求验证码
     def post(self):
@@ -66,16 +66,16 @@ class Search(Resource):  # 登录请求
                 res = db.search_professor(professor_name)
             elif title:  # 通过文章名检索
                 title.strip()
-                page_num = 1
+                page_num = ''
                 if request.args.get('page_num'):
                     page_num = request.args.get('page_num')
-                res = db.search_paper(title, int(page_num))
+                res = db.search_paper(title, page_num)
             elif organization_name:  # 通过机构名检索
                 organization_name.strip()
                 page_num = 1
                 if request.args.get('page_num'):
                     page_num = request.args.get('page_num')
-                res = db.search_organization(organization_name, int(page_num))
+                res = db.search_organization(organization_name, page_num)
             # 非法搜索
             return dumps(res, ensure_ascii=False)
         except:
@@ -434,7 +434,7 @@ class UploadAvatar(Resource):  # 上传头像
             file_path = path + file_name
             img.save(file_path)
             res['state'] = "success"
-            res['url'] = "http://qsz.lkc1621.xyz/static/photo/" + file_name
+            res['url'] = Config.DOMAIN_NAME + "/static/photo/" + file_name
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
@@ -482,14 +482,11 @@ class SearchProfessorNB(Resource):  # 专家高级检索
         res = {"state": "fail"}
         try:
             data = request.get_json()
-            print("fuck")
             professor_name = data.get('professor_name')
             organization_name = ''
             if data.get('organization_name'):
                 organization_name = data.get('organization_name')
-            print("fuck2")
             res = db.search_professor_nb(professor_name, organization_name)
-            print("fuck3")
             return dumps(res, ensure_ascii=False)
         except:
             return dumps(res, ensure_ascii=False)
