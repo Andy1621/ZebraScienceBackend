@@ -58,7 +58,7 @@ def generate_word_cloud(text, path):
     basedir = os.path.abspath(os.path.dirname(__file__))
     coloring = np.array(Image.open(basedir + "/static/wordCloud/zebra.png"))
     wc = WordCloud(background_color="white", max_words=2000, mask=coloring,
-                   max_font_size=100, random_state=42, font_path=basedir + '/static/font/myfont.ttf')
+                   max_font_size=100, random_state=42, font_path=basedir + '/static/font/myfont3.ttf')
     cloud = wc.generate(text)
     # plt.imshow(wc, interpolation="bilinear")
     # plt.axis("off")

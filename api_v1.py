@@ -62,16 +62,16 @@ class Search(Resource):  # 登录请求
         res = {"state": "fail"}
         try:
             if professor_name:  # 通过专家名检索
-                professor_name.strip()
+                professor_name = professor_name.strip()
                 res = db.search_professor(professor_name)
             elif title:  # 通过文章名检索
-                title.strip()
+                title = title.strip()
                 page_num = ''
                 if request.args.get('page_num'):
                     page_num = request.args.get('page_num')
                 res = db.search_paper(title, page_num)
             elif organization_name:  # 通过机构名检索
-                organization_name.strip()
+                organization_name = organization_name.strip()
                 page_num = 1
                 if request.args.get('page_num'):
                     page_num = request.args.get('page_num')
