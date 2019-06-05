@@ -245,6 +245,10 @@ class DealRequest(Resource):  # 管理员处理申请
             if res['state'] == 'success':
                 if res['type'] == 'ADD':
                     content = res['name'] + ",恭喜您申请增加论文成功"
+                    if deal == 'false':
+                        deal = False
+                    else:
+                        deal = True
                     if not deal:
                         content = res['name'] + ",很抱歉您申请增加论文失败"
                     res = db.send_sys_message_to_one('RESOURCERESULT', content, res['email'])
@@ -384,6 +388,10 @@ class DealCertification(Resource):  # 管理员处理认证
             deal = data.get('deal')
             apply_id = data.get('apply_id')
             res = db.deal_certification(apply_id, deal)
+            if deal == 'false':
+                deal = False
+            else:
+                deal = True
             if res['state'] == 'success':
                 content = res['name'] + ",恭喜您申请认证成功"
                 if not deal:

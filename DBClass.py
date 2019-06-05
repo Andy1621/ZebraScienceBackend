@@ -862,6 +862,10 @@ class DbOperate:
             state["state"] = "fail"
             state["reason"] = "apply is already dealt with"
         else:
+            if deal == "false":
+                deal = False
+            else:
+                deal = True
             if deal:
                 apply["state"] = "accepted"
                 result = self.client.Business.user.update_many({"email": apply["email"], "user_type": "USER"},
