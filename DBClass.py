@@ -56,7 +56,7 @@ class DbOperate:
         find_user['star_list'].clear()
         res['reason'] = '收藏列表获取失败'
         for one_star in tmp_star:
-            star_info = self.getCol('sci_source').find_one({'paperid': one_star})
+            star_info = self.getCol('paper').find_one({'paperid': one_star})
             star_info.pop('_id')
             star_info.pop('source_url')
             star_info.pop('free_download_url')
@@ -202,8 +202,8 @@ class DbOperate:
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             # 不在意专家是否已注册
-            experts = self.getCol('scmessage').find({'name': professor_name})
-            test = self.getCol('scmessage').find_one({'name': professor_name})
+            experts = self.getCol('scmessage').find({'name': {'$regex': professor_name}})
+            test = self.getCol('scmessage').find_one({'name': {'$regex': professor_name}})
             # 在专家总表中搜索到该姓名专家
             if test:
                 experts_list = []
@@ -232,13 +232,13 @@ class DbOperate:
     def search_professor_nb(self, professor_name, organization_name):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！', 'msg': []}
         try:
+            must_query = [{"match": {"name": professor_name}}]
+            if organization_name != '':
+                must_query.append({"match": {"mechanism": organization_name}})
             body ={
                     "query": {
                     "bool": {
-                        "must" : [
-                            {"match": {"name": professor_name}},
-                            {"match": {"mechanism": organization_name}}
-                        ]
+                        "must": must_query
                     }
                 },
                 "highlight": {
@@ -378,9 +378,10 @@ class DbOperate:
                 generate = True
                 page_num = 1
             # 根据标题模糊查询
-            temp_papers = self.getCol('sci_source').find({'name': {'$regex': title}})
+            page_num = int(page_num)
+            temp_papers = self.getCol('paper').find({'name': {'$regex': title}})
             papers = temp_papers.skip((page_num - 1) * Config.PAPER_NUM).limit(Config.PAPER_NUM)
-            test = self.getCol('sci_source').find_one({'name': {'$regex': title}})
+            test = self.getCol('paper').find_one({'name': {'$regex': title}})
             # 根据标题模糊匹配查找到相关论文列表
             if test:
                 papers_list = []
@@ -409,7 +410,7 @@ class DbOperate:
     8-1-1. 生成词云
     '''
     def get_word_cloud(self, title, path):
-        temp_papers = self.getCol('sci_source').find({'name': {'$regex': title}}, {'keyword': 1})
+        temp_papers = self.getCol('paper').find({'name': {'$regex': title}}, {'keyword': 1})
         str_keyword = ''
         for k in temp_papers:
             str_keyword = str_keyword + ' '.join(k['keyword']) + ' '
@@ -420,7 +421,7 @@ class DbOperate:
     def get_paper_details(self, paper_id):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
-            find_paper = self.getCol('sci_source').find_one({'paperid': paper_id})
+            find_paper = self.getCol('paper').find_one({'paperid': paper_id})
             # 成功搜索到该论文
             if find_paper:
                 find_paper.pop('_id')
@@ -616,7 +617,7 @@ class DbOperate:
                 res['word_cloud_path'] = Config.DOMAIN_NAME + "/static/wordCloud/" + path + '.jpg'
                 t = threading.Thread(target=self.get_word_cloud2, args=(temp_body, path,))
                 t.start()
-
+            page_num = int(page_num)
             body['from'] = (page_num - 1) * 10
             body = json.dumps(body, ensure_ascii=False)
             temp_papers = self.es.search(index='paper_index', body=body)
@@ -674,6 +675,7 @@ class DbOperate:
     def search_organization(self, org_name, page_num):
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
+            page_num = int(page_num)
             # 根据名称模糊查询
             temp_orgs = self.getCol('mechanism').find({'mechanism': {'$regex': org_name}})
             orgs = temp_orgs.skip((page_num - 1) * Config.ORG_NUM).limit(Config.ORG_NUM)
@@ -832,7 +834,7 @@ class DbOperate:
     def rm_resource(self, professor_id, paper_id):
         res = {'state': 'success', 'reason': '请求删除科技资源成功'}
         scholar = self.getCol('scmessage').find_one({'scid': professor_id})
-        paper = self.getCol('sci_source').find_one({'paperid': paper_id})
+        paper = self.getCol('paper').find_one({'paperid': paper_id})
         try:
             resource_application = self.client.Business.resource_application
             resource_application.insert_one({{"professor_id": professor_id, "paper_id": paper_id,
@@ -882,7 +884,7 @@ class DbOperate:
     def comment(self, email, paper_id, content):
         state = {'state': 'success', "reason": ""}
         comment_list = self.client.Business.comment
-        papers = self.client.Business.sci_source
+        papers = self.client.Business.paper
         query_paper_id = {"paperid": paper_id}
         user_collection = self.client.Business.user
         if papers.find_one(query_paper_id) is None:
