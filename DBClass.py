@@ -202,7 +202,7 @@ class DbOperate:
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             # 不在意专家是否已注册
-            experts = self.getCol('scmessage').find({'name': {'$regex': professor_name}})
+            experts = self.getCol('scmessage').find({'name': {'$regex': professor_name}}).limit(10)
             test = self.getCol('scmessage').find_one({'name': {'$regex': professor_name}})
             # 在专家总表中搜索到该姓名专家
             if test:
