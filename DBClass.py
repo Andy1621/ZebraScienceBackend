@@ -196,6 +196,38 @@ class DbOperate:
             return res
 
     '''
+    4-0. 查询同名专家列表（不在意专家是否注册）（返回 专家scolarID 专家姓名 机构名称 被引次数 成果数 所属领域） √
+         （仅供接口25使用）
+    '''
+    def search_professor_samename(self, professor_name):
+        res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
+        try:
+            # 不在意专家是否已注册
+            experts = self.getCol('scmessage').find({'name': professor_name}, {'paper': 0})
+            test = self.getCol('scmessage').find_one({'name': professor_name}, {'paper': 0})
+            # 在专家总表中搜索到该姓名专家
+            if test:
+                experts_list = []
+                # 根据所查同名专家列表experts，逐个专家提取其中基本信息到tmp中，并放入结果experts_list中
+                for one_exp in experts:
+                    tmp = {}
+                    tmp['scid'] = one_exp['scid']
+                    tmp['name'] = one_exp['name']
+                    tmp['mechanism'] = one_exp['mechanism']
+                    tmp['citedtimes'] = one_exp['citedtimes']
+                    tmp['resultsnumber'] = one_exp['resultsnumber']
+                    tmp['field'] = one_exp['field']
+                    experts_list.append(tmp)
+                res['msg'] = experts_list
+                res['state'] = 'success'
+            # 专家总表中没有记录该姓名专家信息
+            else:
+                res['reason'] = '未搜索到该专家'
+            return res
+        except:
+            return res
+
+    '''
     4-1. 查询专家（不在意专家是否注册）（返回 专家scolarID 专家姓名 机构名称 被引次数 成果数 所属领域） √
     '''
     def search_professor(self, professor_name):
@@ -1010,7 +1042,7 @@ class DbOperate:
         res = {'state': 'fail', 'reason': '网络出错或BUG出现！'}
         try:
             # 获取全部同名专家列表
-            big_result = self.search_professor(professor_name)
+            big_result = self.search_professor_samename(professor_name)
             if big_result['state'] == 'success':
                 exp_detail = self.getCol('scmessage')
                 # 已注册专家列表
